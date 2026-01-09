@@ -62,6 +62,8 @@ supabase/migrations/
 # Compiled JavaScript
 *.js
 !frontend/src/**/*.js
+!frontend/tailwind.config.js
+!frontend/postcss.config.js
 
 # TypeScript
 *.tsbuildinfo
