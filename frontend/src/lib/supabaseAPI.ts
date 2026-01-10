@@ -185,36 +185,6 @@ export const authAPI = {
     return { data: { success: true, message: 'Logged out successfully' } }
   },
   
-  signInWithGoogle: async (redirectUrl?: string) => {
-    const { data, error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: redirectUrl || `${typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000'}/auth`, // Redirect back to auth page after OAuth
-      },
-    });
-
-    if (error) {
-      // Format error to match expected API response structure
-      const errorResponse = {
-        data: {
-          success: false,
-          message: error.message
-        }
-      };
-      throw errorResponse;
-    }
-    
-    // Note: For OAuth, the redirect happens automatically, so we typically don't get here
-    // unless there's an error
-    return {
-      data: {
-        success: true,
-        message: 'Google sign-in initiated',
-        data: data
-      }
-    };
-  },
-  
   updateProfile: async (userData: any) => {
     // Update user metadata in Supabase Auth
     const { data, error } = await supabase.auth.updateUser({
