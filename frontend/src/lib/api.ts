@@ -1,7 +1,7 @@
-import { authAPI, canteenAPI, roomsAPI, communityAPI, eventsAPI, adminAPI, servicesAPI } from './supabaseAPI';
+import { authAPI, canteenAPI, roomsAPI, communityAPI, eventsAPI, adminAPI, servicesAPI, ordersAPI } from './supabaseAPI';
 
 // Export individual APIs for direct import
-export { authAPI, canteenAPI, roomsAPI, communityAPI, eventsAPI, adminAPI, servicesAPI };
+export { authAPI, canteenAPI, roomsAPI, communityAPI, eventsAPI, adminAPI, servicesAPI, ordersAPI };
 
 // Export a default object for compatibility
 const api = {

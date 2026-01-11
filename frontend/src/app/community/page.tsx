@@ -8,7 +8,7 @@ interface CommunityPost {
   _id: string;
   title: string;
   content: string;
-  postType: 'discussion' | 'lost-found' | 'buy-sell';
+  postType: 'discussion' | 'lost' | 'sell';
   author: {
     name: string;
     email: string;
@@ -35,6 +35,7 @@ export default function CommunityPage() {
   });
   const [showCreatePost, setShowCreatePost] = useState(false);
   const [newComments, setNewComments] = useState<{ [key: string]: string }>({});
+  const [filter, setFilter] = useState<'all' | 'discussion' | 'lost' | 'sell'>('all');
 
   // Verification state
   const [isVerified, setIsVerified] = useState(false);
@@ -46,6 +47,8 @@ export default function CommunityPage() {
   });
   const [verificationError, setVerificationError] = useState('');
   const [submitLoading, setSubmitLoading] = useState(false);
+  const [skills, setSkills] = useState<string[]>([]);
+  const [skillsInput, setSkillsInput] = useState<string>('');
 
   const router = useRouter();
 
@@ -59,6 +62,7 @@ export default function CommunityPage() {
       // Check if user is verified
       if (response.data && response.data.user && response.data.user.isVerified) {
         setIsVerified(true);
+        setSkills(response.data.user.skills || []);
         fetchPosts();
       } else {
         setIsVerified(false);
@@ -102,6 +106,21 @@ export default function CommunityPage() {
       setVerificationError(error.response?.data?.message || 'Failed to submit verification details');
     } finally {
       setSubmitLoading(false);
+    }
+  };
+
+  const handleSkillsSave = async () => {
+    try {
+      const parsed = skillsInput.split(',').map(s => s.trim()).filter(Boolean);
+      await authAPI.updateProfile({
+        name: verificationForm.name,
+        isVerified: true,
+        skills: parsed
+      });
+      setSkills(parsed);
+      setSkillsInput('');
+    } catch (error: any) {
+      console.error('Error updating skills:', error);
     }
   };
 
@@ -299,7 +318,7 @@ export default function CommunityPage() {
   return (
     <div>
       <main className="max-w-4xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6 md:py-8">
-        <div className="flex justify-between items-center mb-8">
+        <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 flex items-center">
             <span className="mr-2">👥</span> Campus Community
           </h1>
@@ -309,6 +328,33 @@ export default function CommunityPage() {
           >
             <span className="mr-2">+</span> Create Post
           </button>
+        </div>
+        <div className="bg-white rounded-lg shadow-sm p-4 border border-gray-100 mb-8">
+          <div className="mb-2 text-sm font-semibold text-gray-800">Your Skills</div>
+          {skills.length > 0 ? (
+            <div className="flex flex-wrap gap-2 mb-3">
+              {skills.map((sk, idx) => (
+                <span key={idx} className="px-2 py-1 bg-primary-50 text-primary-700 rounded-md text-xs border border-primary-200">{sk}</span>
+              ))}
+            </div>
+          ) : (
+            <div className="text-sm text-gray-500 mb-3">Add skills to showcase in the community.</div>
+          )}
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={skillsInput}
+              onChange={(e) => setSkillsInput(e.target.value)}
+              placeholder="e.g. React, Figma, Python"
+              className="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+            />
+            <button
+              onClick={handleSkillsSave}
+              className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-md text-sm font-medium"
+            >
+              Save
+            </button>
+          </div>
         </div>
         {/* Create Post Modal */}
         {showCreatePost && (
@@ -342,8 +388,8 @@ export default function CommunityPage() {
                     className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
                   >
                     <option value="discussion">Discussion</option>
-                    <option value="lost-found">Lost & Found</option>
-                    <option value="buy-sell">Buy & Sell</option>
+                    <option value="lost">Lost & Found</option>
+                    <option value="sell">Buy & Sell</option>
                   </select>
                 </div>
                 <div className="mb-4">
@@ -379,20 +425,26 @@ export default function CommunityPage() {
           </div>
         )}
 
+        <div className="flex items-center gap-2 mb-4">
+          <button onClick={() => setFilter('all')} className={`px-3 py-1.5 rounded-md text-sm ${filter === 'all' ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-700'}`}>All</button>
+          <button onClick={() => setFilter('discussion')} className={`px-3 py-1.5 rounded-md text-sm ${filter === 'discussion' ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-700'}`}>Discussions</button>
+          <button onClick={() => setFilter('lost')} className={`px-3 py-1.5 rounded-md text-sm ${filter === 'lost' ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-700'}`}>Lost & Found</button>
+          <button onClick={() => setFilter('sell')} className={`px-3 py-1.5 rounded-md text-sm ${filter === 'sell' ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-700'}`}>Buy & Sell</button>
+        </div>
         {/* Posts List */}
         <div className="space-y-6">
-          {posts.map((post) => (
+          {posts.filter(p => filter === 'all' ? true : p.postType === filter).map((post) => (
             <div key={post._id} className="bg-white rounded-lg shadow-md overflow-hidden">
               <div className="p-6">
                 <div className="flex justify-between items-start">
                   <div>
                     <span className={`inline-flex items-center px-3 py-0.5 rounded-full text-sm font-medium ${post.postType === 'discussion'
                       ? 'bg-blue-100 text-blue-800'
-                      : post.postType === 'lost-found'
+                      : post.postType === 'lost'
                         ? 'bg-yellow-100 text-yellow-800'
                         : 'bg-green-100 text-green-800'
                       }`}>
-                      {post.postType.replace('-', ' ')}
+                      {post.postType === 'sell' ? 'Buy & Sell' : post.postType === 'lost' ? 'Lost & Found' : 'Discussion'}
                     </span>
                     <h3 className="mt-2 text-xl font-semibold text-gray-900">{post.title}</h3>
                   </div>

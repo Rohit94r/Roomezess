@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { canteenAPI } from '@/lib/api';
+import { servicesAPI } from '@/lib/api';
 
 export default function ServiceProviderDashboard() {
   const [activeTab, setActiveTab] = useState('add-service');
@@ -81,7 +81,10 @@ export default function ServiceProviderDashboard() {
         price: parseFloat(formData.price),
       };
 
-      const response = await canteenAPI.createItem(itemData);
+      const response = await servicesAPI.createService({
+        ...itemData,
+        service_type: serviceType,
+      });
       setMessage('Service item added successfully!');
       
       // Reset form

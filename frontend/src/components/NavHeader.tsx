@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { authAPI } from '@/lib/api';
 
 interface User {
   role: string;
@@ -41,7 +42,6 @@ export default function NavHeader({ currentPage: propCurrentPage }: NavHeaderPro
 
   const navItems = [
     { name: 'Home', href: '/' },
-    { name: 'Canteen', href: '/canteen' },
     { name: 'Rooms', href: '/rooms' },
     { name: 'Laundry', href: '/laundry' },
     { name: 'Printing', href: '/printing' },
@@ -106,7 +106,12 @@ export default function NavHeader({ currentPage: propCurrentPage }: NavHeaderPro
                     </Link>
                   )}
                   <button
-                    onClick={() => {
+                    onClick={async () => {
+                      try {
+                        await authAPI.logout();
+                      } catch (e) {
+                        // ignore and proceed with local cleanup
+                      }
                       localStorage.removeItem('token');
                       localStorage.removeItem('user');
                       window.location.href = '/';
@@ -192,7 +197,12 @@ export default function NavHeader({ currentPage: propCurrentPage }: NavHeaderPro
                   </Link>
                 )}
                 <button
-                  onClick={() => {
+                  onClick={async () => {
+                    try {
+                      await authAPI.logout();
+                    } catch (e) {
+                      // ignore and proceed with local cleanup
+                    }
                     localStorage.removeItem('token');
                     localStorage.removeItem('user');
                     window.location.href = '/';

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { canteenAPI } from '@/lib/api';
+import { servicesAPI } from '@/lib/api';
 
 export default function LaundryOwnerDashboard() {
   const [activeTab, setActiveTab] = useState('add-service');
@@ -38,7 +38,10 @@ export default function LaundryOwnerDashboard() {
         price: parseFloat(formData.price),
       };
 
-      const response = await canteenAPI.createItem(itemData);
+      const response = await servicesAPI.createService({
+        ...itemData,
+        service_type: 'laundry',
+      });
       setMessage('Laundry service added successfully!');
       
       // Reset form

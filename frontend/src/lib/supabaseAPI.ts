@@ -113,6 +113,23 @@ export const authAPI = {
     }
   },
 
+  resendEmailConfirmation: async (email: string) => {
+    const { data, error } = await supabase.auth.resend({
+      type: 'signup',
+      email
+    })
+    if (error) {
+      const errorResponse = {
+        data: {
+          success: false,
+          message: error.message
+        }
+      };
+      throw errorResponse;
+    }
+    return { data: { success: true, message: 'Confirmation email sent' } }
+  },
+
   getProfile: async () => {
     const { data: { user }, error } = await supabase.auth.getUser()
     
@@ -164,7 +181,8 @@ export const authAPI = {
           email: user.email,
           role: profile.role,
           college: profile.college,
-          isVerified: profile.is_verified
+          isVerified: profile.is_verified,
+          skills: (user as any)?.user_metadata?.skills || []
         }
       }
     }
@@ -196,7 +214,8 @@ export const authAPI = {
         serviceType: userData.serviceType,
         collegeIdNumber: userData.collegeIdNumber,
         verificationNumber: userData.verificationNumber,
-        is_verified: userData.isVerified
+        is_verified: userData.isVerified,
+        skills: userData.skills
       }
     });
     
@@ -244,7 +263,8 @@ export const authAPI = {
           role: userData.role,
           college: userData.college,
           isVerified: userData.isVerified || data.user?.user_metadata?.is_verified || false,
-          serviceType: userData.serviceType
+          serviceType: userData.serviceType,
+          skills: userData.skills || (data.user as any)?.user_metadata?.skills || []
         }
       }
     };
@@ -435,7 +455,7 @@ export const canteenAPI = {
     }
 
     // Extract item IDs
-    const itemIds = canteenItems.map(item => item.id)
+    const itemIds = canteenItems.map((item: { id: string }) => item.id)
 
     // Then get orders containing those items
     let query = supabase.from('orders').select(`
@@ -450,7 +470,7 @@ export const canteenAPI = {
     if (ordersError) throw ordersError
 
     // Filter orders that contain items from this owner
-    const ownerOrders = allOrders.filter(order => 
+    const ownerOrders = allOrders.filter((order: any) => 
       order.items.some((item: any) => itemIds.includes(item.item))
     )
 
@@ -818,6 +838,42 @@ export const servicesAPI = {
     return { data: { success: true, message: 'Service deleted' } }
   },
 };
+
+// Generic Orders API for service-based orders (e.g., printing)
+export const ordersAPI = {
+  createOrder: async (orderData: { items: any[]; totalPrice: number; notes?: string }) => {
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+      const errorResponse = {
+        data: {
+          success: false,
+          message: authError?.message || 'Not authenticated'
+        }
+      };
+      throw errorResponse;
+    }
+    const { data, error } = await supabase
+      .from('orders')
+      .insert({
+        user_id: user.id,
+        items: orderData.items,
+        total_price: orderData.totalPrice,
+        notes: orderData.notes || ''
+      })
+      .select()
+      .single()
+    if (error) {
+      const errorResponse = {
+        data: {
+          success: false,
+          message: error.message
+        }
+      };
+      throw errorResponse;
+    }
+    return { data: { success: true, data } }
+  }
+}
 
 // Admin API calls
 export const adminAPI = {

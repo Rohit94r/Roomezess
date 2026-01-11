@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { servicesAPI } from '../../../lib/api';
 
 interface ServiceItem {
@@ -22,6 +22,7 @@ export default function ServiceTypePage() {
   const serviceType = params.type as string;
   const [items, setItems] = useState<ServiceItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const router = useRouter();
 
   useEffect(() => {
     fetchServices();
@@ -93,14 +94,22 @@ export default function ServiceTypePage() {
                       </span>
                     </div>
                     <p className="text-sm sm:text-base text-gray-600 mb-4 line-clamp-2">{item.description}</p>
-                    <div className="flex justify-between items-center">
-                      <span className="text-lg sm:text-xl md:text-2xl font-bold text-primary-600">₹{item.price}</span>
-                      <button
-                        className="bg-primary-600 hover:bg-primary-700 active:bg-primary-800 text-white py-2.5 px-4 sm:px-5 rounded-xl font-semibold text-sm sm:text-base shadow-md hover:shadow-lg transition-all active:scale-95"
-                      >
-                        Book +
-                      </button>
-                    </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-lg sm:text-xl md:text-2xl font-bold text-primary-600">₹{item.price}</span>
+                    <button
+                      className="bg-primary-600 hover:bg-primary-700 active:bg-primary-800 text-white py-2.5 px-4 sm:px-5 rounded-xl font-semibold text-sm sm:text-base shadow-md hover:shadow-lg transition-all active:scale-95"
+                      onClick={() => {
+                        const target =
+                          item.service_type === 'printing' ? '/printing' :
+                          item.service_type === 'laundry' ? '/laundry' :
+                          item.service_type === 'mess' || item.service_type === 'canteen' ? '/canteen' :
+                          '/';
+                        router.push(target);
+                      }}
+                    >
+                      Book +
+                    </button>
+                  </div>
                   </div>
                 </div>
               ))}

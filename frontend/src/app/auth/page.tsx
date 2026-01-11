@@ -19,6 +19,8 @@ export default function AuthPage() {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [info, setInfo] = useState('');
+  const [resending, setResending] = useState(false);
   const router = useRouter();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -28,10 +30,42 @@ export default function AuthPage() {
     });
   };
 
+  const handleResendConfirmation = async () => {
+    if (!formData.email) return;
+    try {
+      setResending(true);
+      setInfo('');
+      setError('');
+      const res = await authAPI.resendEmailConfirmation(formData.email);
+      if (res?.data?.success) {
+        setInfo('Confirmation email sent. Check your inbox.');
+      } else {
+        setError(res?.data?.message || 'Failed to send confirmation email');
+      }
+    } catch (err: any) {
+      let errorMessage = 'Failed to send confirmation email';
+      if (typeof err === 'string') {
+        errorMessage = err;
+      } else if (err.error_description) {
+        errorMessage = err.error_description;
+      } else if (err.message) {
+        errorMessage = err.message;
+      } else if (err.data && err.data.message) {
+        errorMessage = err.data.message;
+      } else if (err.error) {
+        errorMessage = err.error;
+      }
+      setError(errorMessage);
+    } finally {
+      setResending(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
+    setInfo('');
 
     try {
       if (isLogin) {
@@ -87,6 +121,7 @@ export default function AuthPage() {
           password: formData.password,
           role: formData.role,
           college: formData.college,
+          serviceType: formData.serviceType,
         });
         
         if (response.data.success) {
@@ -327,6 +362,29 @@ export default function AuthPage() {
                   </div>
                   <div className="ml-3">
                     <h3 className="text-sm font-medium text-red-800">{error}</h3>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {isLogin && error && error.toLowerCase().includes('confirm') && (
+              <div className="mt-2">
+                <button
+                  type="button"
+                  onClick={handleResendConfirmation}
+                  disabled={resending || !formData.email}
+                  className="w-full flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-primary-600 bg-white hover:bg-gray-50 disabled:opacity-50"
+                >
+                  {resending ? 'Sending...' : 'Resend confirmation email'}
+                </button>
+              </div>
+            )}
+
+            {info && (
+              <div className="rounded-md bg-green-50 p-4">
+                <div className="flex">
+                  <div className="ml-3">
+                    <h3 className="text-sm font-medium text-green-800">{info}</h3>
                   </div>
                 </div>
               </div>
