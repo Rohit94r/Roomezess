@@ -32,57 +32,23 @@ export default function EventsPage() {
 
   const fetchEvents = async () => {
     try {
-      // In a real app, we would use the API call
-      // const response = await eventsAPI.getEvents();
-      // For demo purposes, we'll use mock data
-      const mockEvents: Event[] = [
-        {
-          _id: '1',
-          title: 'Annual Tech Fest',
-          description: 'Join us for the biggest tech fest of the year with competitions, workshops, and guest speakers.',
-          eventType: 'event',
-          date: '2023-10-15',
-          startTime: '09:00 AM',
-          endTime: '06:00 PM',
-          location: 'Main Campus Ground',
-          organizer: 'Computer Science Department',
-          maxParticipants: 500,
-          registeredUsers: ['1', '2', '3', '4', '5'],
-          isPublic: true,
-          createdAt: '2023-09-01T10:00:00Z',
-        },
-        {
-          _id: '2',
-          title: 'Innovation Hackathon 2023',
-          description: 'A 24-hour hackathon focused on solving real-world problems with innovative solutions.',
-          eventType: 'hackathon',
-          date: '2023-11-20',
-          startTime: '10:00 AM',
-          endTime: '11:59 PM',
-          location: 'Tech Lab Building',
-          organizer: 'IEEE Student Branch',
-          maxParticipants: 100,
-          registeredUsers: ['1', '2'],
-          isPublic: true,
-          createdAt: '2023-10-01T14:30:00Z',
-        },
-        {
-          _id: '3',
-          title: 'Web Development Workshop',
-          description: 'Learn modern web development techniques with React, Node.js, and MongoDB.',
-          eventType: 'workshop',
-          date: '2023-10-25',
-          startTime: '02:00 PM',
-          endTime: '05:00 PM',
-          location: 'Computer Lab 3',
-          organizer: 'Coding Club',
-          maxParticipants: 40,
-          registeredUsers: ['1'],
-          isPublic: true,
-          createdAt: '2023-10-10T09:15:00Z',
-        }
-      ];
-      setEvents(mockEvents);
+      const response = await eventsAPI.getEvents();
+      const data = (response?.data?.data ?? []) as any[];
+      const normalized: Event[] = data.map((ev: any) => ({
+        _id: ev.id || String(ev.id || ''),
+        title: ev.title || 'Untitled Event',
+        description: ev.description || '',
+        eventType: (ev.eventType || 'event'),
+        date: ev.date,
+        startTime: ev.startTime || '',
+        endTime: ev.endTime || '',
+        location: ev.location || '',
+        organizer: ev.organizer || '',
+        registeredUsers: [],
+        isPublic: true,
+        createdAt: ev.created_at || new Date().toISOString(),
+      }));
+      setEvents(normalized);
     } catch (error) {
       console.error('Error fetching events:', error);
     } finally {
@@ -94,20 +60,7 @@ export default function EventsPage() {
     ? events
     : events.filter(event => event.eventType === eventTypeFilter);
 
-  const registerForEvent = async (eventId: string) => {
-    try {
-      // In a real app, we would use the API call
-      // await eventsAPI.registerForEvent(eventId);
-      // For demo purposes, we'll just update the local state
-      setEvents(events.map(event =>
-        event._id === eventId
-          ? { ...event, registeredUsers: [...event.registeredUsers, 'current_user'] }
-          : event
-      ));
-    } catch (error) {
-      console.error('Error registering for event:', error);
-    }
-  };
+  const registerForEvent = async (_eventId: string) => {};
 
   if (loading) {
     return (
@@ -222,12 +175,7 @@ export default function EventsPage() {
                     <button className="text-primary-500 hover:text-primary-700 font-medium">
                       View Details
                     </button>
-                    <button
-                      onClick={() => registerForEvent(event._id)}
-                      className="bg-primary-600 hover:bg-primary-700 active:bg-primary-800 text-white py-2.5 px-4 sm:px-5 rounded-xl font-semibold text-sm sm:text-base shadow-md hover:shadow-lg transition-all active:scale-95"
-                    >
-                      Register
-                    </button>
+                    <span className="text-sm text-gray-500">{event.organizer || 'Organized by campus'}</span>
                   </div>
                 </div>
               </div>

@@ -179,7 +179,7 @@ export default function Home() {
               <ul className="space-y-2">
                 <li><Link href="/services/canteen" className="text-sm sm:text-base text-gray-400 hover:text-white transition-colors active:text-primary-400">Canteen</Link></li>
                 <li><Link href="/rooms" className="text-sm sm:text-base text-gray-400 hover:text-white transition-colors active:text-primary-400">Rooms & PG</Link></li>
-                <li><Link href="/canteen" className="text-sm sm:text-base text-gray-400 hover:text-white transition-colors active:text-primary-400">Mess</Link></li>
+                <li><Link href="/mess" className="text-sm sm:text-base text-gray-400 hover:text-white transition-colors active:text-primary-400">Mess</Link></li>
                 <li><Link href="/services/laundry" className="text-sm sm:text-base text-gray-400 hover:text-white transition-colors active:text-primary-400">Laundry</Link></li>
               </ul>
             </div>

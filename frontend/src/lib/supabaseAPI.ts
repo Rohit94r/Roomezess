@@ -182,7 +182,8 @@ export const authAPI = {
           role: profile.role,
           college: profile.college,
           isVerified: profile.is_verified,
-          skills: (user as any)?.user_metadata?.skills || []
+          skills: (user as any)?.user_metadata?.skills || [],
+          serviceType: (user as any)?.user_metadata?.serviceType
         }
       }
     }
@@ -748,10 +749,7 @@ export const servicesAPI = {
   getServicesByType: async (serviceType: string) => {
     const { data, error } = await supabase
       .from('services')
-      .select(`
-        *,
-        profiles(name)
-      `)
+      .select('*')
       .eq('service_type', serviceType)
       .eq('available', true)
 
@@ -772,10 +770,7 @@ export const servicesAPI = {
 
     const { data, error } = await supabase
       .from('services')
-      .select(`
-        *,
-        profiles(name)
-      `)
+      .select('*')
       .eq('service_type', serviceType)
       .eq('owner_id', user.id)
 

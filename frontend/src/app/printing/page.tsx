@@ -109,56 +109,64 @@ export default function PrintingPage() {
         }
     };
     
-    const placeOrder = async () => {
-        setPlacingOrder(true);
-        setMessage('');
-        try {
-            const price = totalPrice();
-            const orderItem = {
-                item: 'printing',
-                name: `Printing ${pageSize} ${colorMode} ${sides}`,
-                quantity: copies,
-                price: price,
-                fileUrl: publicUrl,
-                pages
-            };
-            await ordersAPI.createOrder({
-                items: [orderItem],
-                totalPrice: price,
-                notes: `Printing job: ${pageSize}, ${colorMode}, ${sides}, ${pages} pages, ${copies} copies`
-            });
-            setMessage('Order placed successfully');
-        } catch (e: any) {
-            setMessage(e.data?.message || e.message || 'Failed to place order');
-        } finally {
-            setPlacingOrder(false);
-        }
-    };
+  const placeOrder = async () => {
+    setPlacingOrder(true);
+    setMessage('');
+    try {
+      const price = totalPrice();
+      const orderItem = {
+        item: 'printing',
+        name: `Printing ${pageSize} ${colorMode} ${sides}`,
+        quantity: copies,
+        price: price,
+        fileUrl: publicUrl,
+        pages
+      };
+      await ordersAPI.createOrder({
+        items: [orderItem],
+        totalPrice: price,
+        notes: `Printing job: ${pageSize}, ${colorMode}, ${sides}, ${pages} pages, ${copies} copies`
+      });
+      setMessage('Order placed successfully. Emailing service provider…');
+      if (publicUrl) {
+        const subject = encodeURIComponent('New Print Job Request');
+        const body = encodeURIComponent(
+          `Hello,\n\nA new print job has been placed.\n\nDetails:\n- Page Size: ${pageSize}\n- Color: ${colorMode}\n- Sides: ${sides}\n- Pages: ${pages}\n- Copies: ${copies}\n- Estimated Total: ₹${totalPrice()}\n\nDocument URL:\n${publicUrl}\n\nPlease process this order.\n\nRoomezes`
+        );
+        const mailto = `mailto:rjdhav67@gmail.com?subject=${subject}&body=${body}`;
+        window.open(mailto, '_blank');
+      }
+    } catch (e: any) {
+      setMessage(e.data?.message || e.message || 'Failed to place order');
+    } finally {
+      setPlacingOrder(false);
+    }
+  };
     
     const payOnline = async () => {
-        try {
-            const key = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
-            if (!key) {
-                setMessage('Online payment key not configured. Proceeding without payment.');
-                await placeOrder();
-                return;
-            }
-            await ensureRazorpayScript();
-            const amountPaise = totalPrice() * 100;
-            const options = {
-                key,
-                amount: amountPaise,
-                currency: 'INR',
-                name: 'Roomezes Printing',
-                description: 'Document printing',
-                handler: async () => {
-                    await placeOrder();
-                },
-                prefill: {},
-                theme: { color: '#4F46E5' }
-            };
-            const rzp = new window.Razorpay(options);
-            rzp.open();
+      try {
+        const key = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
+        if (!key) {
+          setMessage('Online payment key not configured. Proceeding without payment.');
+          await placeOrder();
+          return;
+        }
+        await ensureRazorpayScript();
+        const amountPaise = totalPrice() * 100;
+        const options = {
+          key,
+          amount: amountPaise,
+          currency: 'INR',
+          name: 'Roomezes Printing',
+          description: 'Document printing',
+          handler: async () => {
+            await placeOrder();
+          },
+          prefill: {},
+          theme: { color: '#4F46E5' }
+        };
+        const rzp = new window.Razorpay(options);
+        rzp.open();
         } catch (e: any) {
             setMessage(e.message || 'Payment initialization failed');
         }

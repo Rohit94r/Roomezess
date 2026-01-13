@@ -96,18 +96,8 @@ export default function AuthPage() {
           localStorage.setItem('user', JSON.stringify(userData));
           
           // Redirect based on user role
-          if (userData.role === 'owner') {
-            // If the user data contains serviceType, redirect to appropriate dashboard
-            if (userData.serviceType === 'printing') {
-              router.push('/printing-owner');
-            } else if (userData.serviceType === 'laundry') {
-              router.push('/laundry-owner');
-            } else {
-              // Default to canteen owner dashboard
-              router.push('/canteen-owner');
-            }
-          } else if (userData.role === 'admin') {
-            router.push('/owner-dashboard');
+          if (userData.role === 'owner' || userData.role === 'admin') {
+            router.push('/admin');
           } else {
             router.push('/');
           }
@@ -125,12 +115,10 @@ export default function AuthPage() {
         });
         
         if (response.data.success) {
-          // Store the selected service type in localStorage for redirection after login
           if (formData.role === 'owner') {
             localStorage.setItem('tempServiceType', formData.serviceType);
           }
           
-          // Automatically log in after registration
           const loginResponse = await authAPI.login({
             email: formData.email,
             password: formData.password,
@@ -140,22 +128,8 @@ export default function AuthPage() {
             localStorage.setItem('token', loginResponse.data.user.token);
             localStorage.setItem('user', JSON.stringify(loginResponse.data.user));
             
-            // Redirect based on user role
-            if (loginResponse.data.user.role === 'owner') {
-              // Use the temporarily stored service type from registration
-              const tempServiceType = localStorage.getItem('tempServiceType');
-              if (tempServiceType === 'printing') {
-                router.push('/printing-owner');
-              } else if (tempServiceType === 'laundry') {
-                router.push('/laundry-owner');
-              } else {
-                // Default to canteen owner dashboard
-                router.push('/canteen-owner');
-              }
-              // Clean up the temporary storage
-              localStorage.removeItem('tempServiceType');
-            } else if (loginResponse.data.user.role === 'admin') {
-              router.push('/owner-dashboard');
+            if (loginResponse.data.user.role === 'owner' || loginResponse.data.user.role === 'admin') {
+              router.push('/admin');
             } else {
               router.push('/');
             }
@@ -387,6 +361,18 @@ export default function AuthPage() {
                     <h3 className="text-sm font-medium text-green-800">{info}</h3>
                   </div>
                 </div>
+              </div>
+            )}
+            {isLogin && info && (
+              <div className="mt-2">
+                <button
+                  type="button"
+                  onClick={handleResendConfirmation}
+                  disabled={resending || !formData.email}
+                  className="w-full flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-primary-600 bg-white hover:bg-gray-50 disabled:opacity-50"
+                >
+                  {resending ? 'Sending...' : 'Resend confirmation email'}
+                </button>
               </div>
             )}
 

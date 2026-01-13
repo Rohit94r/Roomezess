@@ -4,7 +4,6 @@ import { Inter } from 'next/font/google';
 import NavHeader from '../components/NavHeader';
 import SupabaseAuthListener from '../components/SupabaseAuthListener';
 
-import { Analytics } from "@vercel/analytics/next";
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -26,7 +25,6 @@ export default function RootLayout({
         <div className="min-h-screen pt-16">
           {children}
         </div>
-        <Analytics />
       </body>
     </html>
   );

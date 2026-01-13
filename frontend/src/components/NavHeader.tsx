@@ -9,6 +9,7 @@ interface User {
   role: string;
   serviceType?: string;
   isVerified: boolean;
+  email?: string;
 }
 
 interface NavHeaderProps {
@@ -27,17 +28,34 @@ export default function NavHeader({ currentPage: propCurrentPage }: NavHeaderPro
   const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (token) {
+    (async () => {
       try {
-        const storedUser = localStorage.getItem('user');
-        if (storedUser) {
-          setUser(JSON.parse(storedUser));
+        const profileRes = await authAPI.getProfile();
+        const u = profileRes.data.user;
+        const storedUser = {
+          role: u.role,
+          serviceType: u.serviceType,
+          isVerified: !!u.isVerified,
+          email: u.email
+        };
+        setUser(storedUser);
+        localStorage.setItem('user', JSON.stringify(storedUser));
+      } catch (_) {
+        const token = localStorage.getItem('token');
+        if (token) {
+          try {
+            const storedUserRaw = localStorage.getItem('user');
+            if (storedUserRaw) {
+              setUser(JSON.parse(storedUserRaw));
+            }
+          } catch (e) {
+            console.error('Error parsing user data', e);
+          }
+        } else {
+          setUser(null);
         }
-      } catch (e) {
-        console.error('Error parsing user data', e);
       }
-    }
+    })();
   }, []);
 
   const navItems = [
@@ -62,46 +80,28 @@ export default function NavHeader({ currentPage: propCurrentPage }: NavHeaderPro
               <span className="ml-2 sm:ml-3 text-lg sm:text-xl font-bold text-white">Roomezes</span>
             </Link>
             <nav className="hidden md:ml-8 md:flex md:space-x-1 lg:space-x-4">
-              {navItems.map((item) => {
-                // Only show community link if user is verified
-                if (item.name === 'Community' && user && !user.isVerified) {
-                  return null;
-                }
-                return (
-                  <Link
-                    key={item.name}
-                    href={item.href}
-                    className={`inline-flex items-center px-3 lg:px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${normalizedCurrentPage === item.name.toLowerCase()
-                      ? 'bg-white text-primary-600 shadow-md'
-                      : 'text-white/90 hover:bg-white/20 hover:text-white'
-                      }`}
-                  >
-                    {item.name}
-                  </Link>
-                );
-              })}
+              {navItems.map((item) => (
+                <Link
+                  key={item.name}
+                  href={item.href}
+                  className={`inline-flex items-center px-3 lg:px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${normalizedCurrentPage === item.name.toLowerCase()
+                    ? 'bg-white text-primary-600 shadow-md'
+                    : item.name === 'Community'
+                      ? 'bg-white/10 text-white shadow-sm hover:bg-white/20'
+                      : 'text-white/90 hover:bg:white/20 hover:text-white'
+                    }`}
+                >
+                  {item.name}
+                </Link>
+              ))}
             </nav>
           </div>
           <div className="flex items-center">
             <div className="hidden md:ml-4 md:flex md:flex-shrink-0 md:items-center md:space-x-3">
               {user ? (
                 <>
-                  {user.role === 'owner' && (
-                    <Link
-                      href={
-                        user.serviceType === 'printing' ? '/printing-owner' :
-                          user.serviceType === 'laundry' ? '/laundry-owner' :
-                            '/canteen-owner'
-                      }
-                      className="bg-white text-primary-600 px-4 py-2 rounded-lg font-medium hover:bg-white/90 transition shadow-sm"
-                    >
-                      {user.serviceType === 'printing' ? 'Printing Dashboard' :
-                        user.serviceType === 'laundry' ? 'Laundry Dashboard' :
-                          'Canteen Dashboard'}
-                    </Link>
-                  )}
-                  {user.role === 'admin' && (
-                    <Link href="/owner-dashboard" className="bg-white text-primary-600 px-4 py-2 rounded-lg font-medium hover:bg-white/90 transition shadow-sm">
+                  {user.role === 'admin' && user.email === 'rjdhav67@gmail.com' && (
+                    <Link href="/admin" className="bg-white text-primary-600 px-4 py-2 rounded-lg font-medium hover:bg-white/90 transition shadow-sm">
                       Admin Dashboard
                     </Link>
                   )}
@@ -150,46 +150,27 @@ export default function NavHeader({ currentPage: propCurrentPage }: NavHeaderPro
       {isMenuOpen && (
         <div className="md:hidden bg-white border-t border-primary-100 shadow-xl">
           <div className="pt-2 pb-2">
-            {navItems.map((item) => {
-              // Only show community link if user is verified
-              if (item.name === 'Community' && user && !user.isVerified) {
-                return null;
-              }
-              return (
-                <Link
-                  key={item.name}
-                  href={item.href}
-                  onClick={() => setIsMenuOpen(false)}
-                  className={`${normalizedCurrentPage === item.name.toLowerCase()
-                    ? 'bg-primary-50 text-primary-600 border-l-4 border-primary-500 block pl-4 pr-4 py-3.5 text-base font-medium active:bg-gray-100 transition-colors'
+            {navItems.map((item) => (
+              <Link
+                key={item.name}
+                href={item.href}
+                onClick={() => setIsMenuOpen(false)}
+                className={`${normalizedCurrentPage === item.name.toLowerCase()
+                  ? 'bg-primary-50 text-primary-600 border-l-4 border-primary-500 block pl-4 pr-4 py-3.5 text-base font-medium active:bg-gray-100 transition-colors'
+                  : item.name === 'Community'
+                    ? 'text-primary-600 bg-primary-50 block pl-4 pr-4 py-3.5 text-base font-medium active:bg-gray-100 transition-colors'
                     : 'text-gray-700 hover:bg-gray-50 block pl-4 pr-4 py-3.5 text-base font-medium active:bg-gray-100 transition-colors'}`}
-                >
-                  {item.name}
-                </Link>
-              );
-            })}
+              >
+                {item.name}
+              </Link>
+            ))}
           </div>
           <div className="pt-3 pb-3 border-t border-gray-200 px-4">
             {user ? (
               <div className="space-y-2">
-                {user.role === 'owner' && (
+                {user.role === 'admin' && user.email === 'rjdhav67@gmail.com' && (
                   <Link
-                    href={
-                      user.serviceType === 'printing' ? '/printing-owner' :
-                        user.serviceType === 'laundry' ? '/laundry-owner' :
-                          '/canteen-owner'
-                    }
-                    className="block w-full bg-primary-600 text-white text-center py-3 rounded-lg font-medium hover:bg-primary-700 active:bg-primary-800 transition-colors shadow-sm"
-                    onClick={() => setIsMenuOpen(false)}
-                  >
-                    {user.serviceType === 'printing' ? 'Printing Dashboard' :
-                      user.serviceType === 'laundry' ? 'Laundry Dashboard' :
-                        'Canteen Dashboard'}
-                  </Link>
-                )}
-                {user.role === 'admin' && (
-                  <Link
-                    href="/owner-dashboard"
+                    href="/admin"
                     className="block w-full bg-primary-600 text-white text-center py-3 rounded-lg font-medium hover:bg-primary-700 active:bg-primary-800 transition-colors shadow-sm"
                     onClick={() => setIsMenuOpen(false)}
                   >

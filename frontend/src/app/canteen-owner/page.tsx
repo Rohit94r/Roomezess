@@ -5,34 +5,16 @@ import { servicesAPI } from '@/lib/api';
 
 export default function ServiceProviderDashboard() {
   const [activeTab, setActiveTab] = useState('add-service');
-  const [serviceType, setServiceType] = useState('canteen');
+  const serviceType = 'canteen';
+  const serviceTypes = [{ value: 'canteen', label: 'Canteen/Restaurant', placeholder: 'e.g., Veg Burger' }];
 
-  // Service type options - each provider will see their relevant type
-  const serviceTypes = [
-    { value: 'canteen', label: 'Canteen/Restaurant', placeholder: 'e.g., Veg Burger' },
-    { value: 'printing', label: 'Printing', placeholder: 'e.g., A4 Document Print' },
-    { value: 'laundry', label: 'Laundry', placeholder: 'e.g., Shirt Wash' },
-    { value: 'stationery', label: 'Stationery', placeholder: 'e.g., Notebooks' },
-    { value: 'electronics', label: 'Electronics Repair', placeholder: 'e.g., Phone Charging' },
-    { value: 'tution', label: 'Tution Classes', placeholder: 'e.g., Math Class' },
-  ];
-  
-  // Get user's service type preference from localStorage, user data, or default to canteen
-  const storedUser = typeof window !== 'undefined' ? localStorage.getItem('user') : null;
-  let userFromStorage = null;
-  try {
-    userFromStorage = storedUser ? JSON.parse(storedUser) : null;
-  } catch (e) {
-    console.error('Error parsing user data', e);
-  }
-  const userPreferredServiceType = typeof window !== 'undefined' ? localStorage.getItem('userServiceType') || userFromStorage?.serviceType || 'canteen' : 'canteen';
   const [formData, setFormData] = useState({
     name: '',
     description: '',
     price: '',
     category: 'veg',
     available: true,
-    serviceType: userPreferredServiceType,
+    serviceType: serviceType,
   });
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
@@ -47,28 +29,7 @@ export default function ServiceProviderDashboard() {
     });
   };
 
-  const handleServiceTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const value = e.target.value;
-    setServiceType(value);
-    setFormData({
-      ...formData,
-      serviceType: value
-    });
-    // Save user preference
-    localStorage.setItem('userServiceType', value);
-    
-    // Update user data in localStorage if it exists
-    try {
-      const storedUser = localStorage.getItem('user');
-      if (storedUser) {
-        const user = JSON.parse(storedUser);
-        user.serviceType = value;
-        localStorage.setItem('user', JSON.stringify(user));
-      }
-    } catch (e) {
-      console.error('Error updating user service type', e);
-    }
-  };
+  const handleServiceTypeChange = () => {};
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -94,7 +55,7 @@ export default function ServiceProviderDashboard() {
         price: '',
         category: 'veg',
         available: true,
-        serviceType: userPreferredServiceType, // Keep user's preferred service type
+        serviceType: serviceType,
       });
     } catch (error: any) {
       console.error('Error adding service item:', error);
@@ -110,7 +71,7 @@ export default function ServiceProviderDashboard() {
       {/* Dashboard Header */}
       <header className="bg-white shadow">
         <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
-          <h1 className="text-3xl font-bold text-gray-900">Service Provider Dashboard</h1>
+          <h1 className="text-3xl font-bold text-gray-900">Canteen Owner Dashboard</h1>
         </div>
       </header>
 
@@ -173,22 +134,10 @@ export default function ServiceProviderDashboard() {
                 
                 <form onSubmit={handleSubmit} className="space-y-6">
                   <div>
-                    <label htmlFor="serviceType" className="block text-sm font-medium text-gray-700">
+                    <label className="block text-sm font-medium text-gray-700">
                       Service Type
                     </label>
-                    <select
-                      id="serviceType"
-                      name="serviceType"
-                      value={serviceType}
-                      onChange={handleServiceTypeChange}
-                      className="mt-1 block w-full bg-white border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
-                    >
-                      {serviceTypes.map((type) => (
-                        <option key={type.value} value={type.value}>
-                          {type.label}
-                        </option>
-                      ))}
-                    </select>
+                    <div className="mt-1 text-sm font-semibold text-gray-900">Canteen/Restaurant</div>
                   </div>
                   <div>
                     <label htmlFor="name" className="block text-sm font-medium text-gray-700">
