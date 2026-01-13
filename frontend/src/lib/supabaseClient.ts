@@ -1,6 +1,8 @@
 import { createClient } from '@supabase/supabase-js'
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+const rawUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const rawAnon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+const supabaseUrl = typeof rawUrl === 'string' ? rawUrl.replace(/^['"`]\s*|\s*['"`]$/g, '').trim() : undefined
+const supabaseAnonKey = typeof rawAnon === 'string' ? rawAnon.replace(/^['"`]\s*|\s*['"`]$/g, '').trim() : undefined
 let client: any
 if (supabaseUrl && supabaseAnonKey) {
   client = createClient(supabaseUrl, supabaseAnonKey)
