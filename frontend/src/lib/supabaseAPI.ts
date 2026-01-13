@@ -81,6 +81,9 @@ export const authAPI = {
     })
 
     if (error) {
+      try {
+        console.error('Auth login error', error)
+      } catch {}
       // Format error to match expected API response structure
       const errorResponse = {
         data: {
@@ -744,7 +747,7 @@ export const eventsAPI = {
   }
 }
 
-// Services API calls
+
 export const servicesAPI = {
   getServicesByType: async (serviceType: string) => {
     const { data, error } = await supabase
