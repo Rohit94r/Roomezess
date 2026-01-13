@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { useParams, useRouter } from 'next/navigation';
 import { servicesAPI } from '../../../lib/api';
 
@@ -73,9 +74,11 @@ export default function ServiceTypePage() {
               {items.map((item) => (
                 <div key={item.id} className="bg-white rounded-2xl shadow-md overflow-hidden hover:shadow-xl transition-all duration-300 border border-gray-100 active:scale-[0.98]">
                   {item.image ? (
-                    <img
+                    <Image
                       src={item.image}
                       alt={item.name}
+                      width={800}
+                      height={480}
                       className="w-full h-40 sm:h-48 object-cover"
                     />
                   ) : (

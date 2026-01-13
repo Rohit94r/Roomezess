@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { servicesAPI, ordersAPI } from '@/lib/api';
 import { supabase } from '@/lib/supabaseClient';
 
@@ -308,7 +309,7 @@ export default function PrintingPage() {
                             {items.map((item) => (
                                 <div key={item.id} className="bg-white rounded-2xl shadow-md overflow-hidden hover:shadow-xl transition-all duration-300 border border-gray-100 active:scale-[0.98]">
                                     {item.image ? (
-                                        <img src={item.image} alt={item.name} className="w-full h-40 sm:h-48 object-cover" />
+                                        <Image src={item.image} alt={item.name} width={800} height={480} className="w-full h-40 sm:h-48 object-cover" />
                                     ) : (
                                         <div className="bg-gradient-to-br from-indigo-50 to-indigo-100 w-full h-40 sm:h-48 flex items-center justify-center">
                                             <span className="text-indigo-400 text-3xl">🖨️</span>

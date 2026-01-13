@@ -29,6 +29,7 @@ export default function AdminDashboard() {
   const router = useRouter();
   const [authChecking, setAuthChecking] = useState(true);
   const [authorized, setAuthorized] = useState(false);
+  const [adminId, setAdminId] = useState<string>('');
   const [activeTab, setActiveTab] = useState<'users' | 'services' | 'events'>('services');
   const [serviceType, setServiceType] = useState<'canteen' | 'printing' | 'laundry' | 'mess'>('mess');
   const [services, setServices] = useState<ServiceItem[]>([]);
@@ -62,6 +63,7 @@ export default function AdminDashboard() {
         const email = res?.data?.user?.email;
         if (email === 'rjdhav67@gmail.com') {
           setAuthorized(true);
+          setAdminId(res?.data?.user?.id || '');
           loadServices();
           loadUsers();
           loadEvents();
@@ -101,14 +103,23 @@ export default function AdminDashboard() {
     setMessage('');
     try {
       const priceNum = parseFloat(newService.price || '0');
-      await servicesAPI.createService({
-        name: newService.name,
-        description: newService.description,
-        price: priceNum,
-        category: newService.category,
-        service_type: serviceType,
-        available: newService.available,
+      const res = await fetch('/api/admin/add-service', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: newService.name,
+          description: newService.description,
+          price: priceNum,
+          category: newService.category,
+          service_type: serviceType,
+          available: newService.available,
+          owner_id: adminId,
+        }),
       });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error(j?.error || 'Failed to add service');
+      }
       setMessage('Service added');
       setNewService({ name: '', description: '', price: '', category: 'veg', available: true });
       loadServices();
