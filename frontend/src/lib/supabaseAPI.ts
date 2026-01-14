@@ -216,6 +216,7 @@ export const authAPI = {
         role: userData.role,
         college: userData.college,
         serviceType: userData.serviceType,
+        collegeEmail: userData.collegeEmail,
         collegeIdNumber: userData.collegeIdNumber,
         verificationNumber: userData.verificationNumber,
         is_verified: userData.isVerified,

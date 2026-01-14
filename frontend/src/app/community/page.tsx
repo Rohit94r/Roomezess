@@ -47,8 +47,7 @@ export default function CommunityPage() {
   const [checkingVerification, setCheckingVerification] = useState(true);
   const [verificationForm, setVerificationForm] = useState({
     name: '',
-    collegeIdNumber: '',
-    verificationNumber: '',
+    collegeEmail: '',
   });
   const [verificationError, setVerificationError] = useState('');
   const [submitLoading, setSubmitLoading] = useState(false);
@@ -104,17 +103,30 @@ export default function CommunityPage() {
     setVerificationError('');
     setSubmitLoading(true);
 
-    if (!verificationForm.name || !verificationForm.collegeIdNumber || !verificationForm.verificationNumber) {
+    if (!verificationForm.name || !verificationForm.collegeEmail) {
       setVerificationError('All fields are required');
       setSubmitLoading(false);
       return;
     }
 
+    const domain = '@atharvacoe.ac.in';
+    if (!verificationForm.collegeEmail.includes('@') || !verificationForm.collegeEmail.toLowerCase().endsWith(domain)) {
+      setVerificationError(`Email must end with ${domain}`);
+      setSubmitLoading(false);
+      return;
+    }
+
     try {
+      try {
+        await authAPI.getProfile();
+      } catch (_) {
+        setVerificationError('Please log in to verify');
+        setSubmitLoading(false);
+        return;
+      }
       await authAPI.updateProfile({
         name: verificationForm.name,
-        collegeIdNumber: verificationForm.collegeIdNumber,
-        verificationNumber: verificationForm.verificationNumber,
+        collegeEmail: verificationForm.collegeEmail,
         isVerified: true
       });
 
@@ -258,6 +270,23 @@ export default function CommunityPage() {
               Connect with students, discuss topics, find lost items, and buy/sell essentials.
             </p>
           </div>
+          
+          <div className="mb-6">
+            <div className="flex flex-wrap gap-3">
+              <a href="/community/discussions" className="px-3 py-2 rounded-lg text-sm font-semibold bg-white border border-gray-200 hover:bg-gray-100">
+                Discussions
+              </a>
+              <a href="/community/lost-and-found" className="px-3 py-2 rounded-lg text-sm font-semibold bg-white border border-gray-200 hover:bg-gray-100">
+                Lost & Found
+              </a>
+              <a href="/community/buy-sell" className="px-3 py-2 rounded-lg text-sm font-semibold bg-white border border-gray-200 hover:bg-gray-100">
+                Buy & Sell
+              </a>
+              <a href="/community/project-friday" className="px-3 py-2 rounded-lg text-sm font-semibold bg-white border border-gray-200 hover:bg-gray-100">
+                Project Friday
+              </a>
+            </div>
+          </div>
 
           {checkingVerification && (
             <div className="rounded-xl border border-gray-200 bg-white p-4 sm:p-5 shadow-sm">
@@ -300,18 +329,11 @@ export default function CommunityPage() {
                   onChange={(e) => setVerificationForm({ ...verificationForm, name: e.target.value })}
                 />
                 <input
-                  type="text"
-                  placeholder="College ID Number"
+                  type="email"
+                  placeholder="College Email (name@atharvacoe.ac.in)"
                   className="border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  value={verificationForm.collegeIdNumber}
-                  onChange={(e) => setVerificationForm({ ...verificationForm, collegeIdNumber: e.target.value })}
-                />
-                <input
-                  type="text"
-                  placeholder="Verification Code"
-                  className="border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  value={verificationForm.verificationNumber}
-                  onChange={(e) => setVerificationForm({ ...verificationForm, verificationNumber: e.target.value })}
+                  value={verificationForm.collegeEmail}
+                  onChange={(e) => setVerificationForm({ ...verificationForm, collegeEmail: e.target.value })}
                 />
                 <div className="sm:col-span-3 flex items-center gap-3">
                   <button
