@@ -5,6 +5,7 @@ import { eventsAPI } from '@/lib/api';
 
 interface Event {
   _id: string;
+  id?: string;
   title: string;
   description: string;
   eventType: 'event' | 'hackathon' | 'workshop';
@@ -14,10 +15,13 @@ interface Event {
   location: string;
   organizer: string;
   registrationLink?: string;
+  register_link?: string;
   maxParticipants?: number;
   registeredUsers: string[];
   isPublic: boolean;
   image?: string;
+  image_url?: string;
+  map_link?: string;
   createdAt: string;
 }
 
@@ -36,6 +40,7 @@ export default function EventsPage() {
       const data = (response?.data?.data ?? []) as any[];
       const normalized: Event[] = data.map((ev: any) => ({
         _id: ev.id || String(ev.id || ''),
+        id: ev.id,
         title: ev.title || 'Untitled Event',
         description: ev.description || '',
         eventType: (ev.eventType || 'event'),
@@ -44,6 +49,9 @@ export default function EventsPage() {
         endTime: ev.endTime || '',
         location: ev.location || '',
         organizer: ev.organizer || '',
+        register_link: ev.register_link || ev.registrationLink || '',
+        image_url: ev.image_url || ev.image || '',
+        map_link: ev.map_link || '',
         registeredUsers: [],
         isPublic: true,
         createdAt: ev.created_at || new Date().toISOString(),
@@ -113,9 +121,17 @@ export default function EventsPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 md:gap-6">
             {filteredEvents.map((event) => (
               <div key={event._id} className="bg-white rounded-2xl shadow-md overflow-hidden hover:shadow-xl transition-all duration-300 border border-gray-100 active:scale-[0.98]">
-                <div className="h-40 sm:h-48 bg-gradient-to-br from-pink-100 to-pink-200 border-b border-gray-200 w-full flex items-center justify-center relative">
-                  <span className="text-gray-600 text-sm font-medium">📅 Event Image</span>
-                </div>
+                {event.image_url || event.image ? (
+                  <img
+                    src={event.image_url || event.image || ''}
+                    alt={event.title}
+                    className="w-full h-40 sm:h-48 object-cover"
+                  />
+                ) : (
+                  <div className="h-40 sm:h-48 bg-gradient-to-br from-pink-100 to-pink-200 border-b border-gray-200 w-full flex items-center justify-center relative">
+                    <span className="text-gray-600 text-sm font-medium">📅 Event Image</span>
+                  </div>
+                )}
                 <div className="p-4 sm:p-5 md:p-6">
                   <div className="flex justify-between items-start">
                     <span className={`inline-flex items-center px-3 py-0.5 rounded-full text-sm font-medium ${event.eventType === 'event'
@@ -148,6 +164,16 @@ export default function EventsPage() {
                       </svg>
                       <span>{event.location}</span>
                     </div>
+                    
+                    {/* Map Link */}
+                    {event.map_link && (
+                      <div className="flex items-center text-sm">
+                        <a href={event.map_link} target="_blank" rel="noopener noreferrer" className="text-primary-600 hover:text-primary-700 font-semibold flex items-center gap-1">
+                          <span>📍</span> View Location
+                        </a>
+                      </div>
+                    )}
+                    
                     <div className="flex items-center text-sm text-gray-500">
                       <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
@@ -171,11 +197,17 @@ export default function EventsPage() {
                     </div>
                   )}
 
-                  <div className="mt-6 flex justify-between items-center">
-                    <button className="text-primary-500 hover:text-primary-700 font-medium">
-                      View Details
-                    </button>
-                    <span className="text-sm text-gray-500">{event.organizer || 'Organized by campus'}</span>
+                  <div className="mt-6 flex justify-between items-center gap-2">
+                    {event.register_link ? (
+                      <button 
+                        onClick={() => window.open(event.register_link, '_blank')}
+                        className="flex-1 bg-primary-600 hover:bg-primary-700 text-white font-semibold py-2 px-3 rounded-lg text-sm transition-all"
+                      >
+                        Register Now 🎫
+                      </button>
+                    ) : (
+                      <span className="text-sm text-gray-500">Registration link pending</span>
+                    )}
                   </div>
                 </div>
               </div>

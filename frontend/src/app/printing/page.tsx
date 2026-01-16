@@ -18,6 +18,7 @@ interface ServiceItem {
     price: number;
     service_type: string;
     available: boolean;
+    image_url?: string;
     image?: string;
     owner_id: string;
     created_at: string;
@@ -308,8 +309,8 @@ export default function PrintingPage() {
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 md:gap-6">
                             {items.map((item) => (
                                 <div key={item.id} className="bg-white rounded-2xl shadow-md overflow-hidden hover:shadow-xl transition-all duration-300 border border-gray-100 active:scale-[0.98]">
-                                    {item.image ? (
-                                        <Image src={item.image} alt={item.name} width={800} height={480} className="w-full h-40 sm:h-48 object-cover" />
+                                    {item.image_url || item.image ? (
+                                        <Image src={item.image_url || item.image} alt={item.name} width={800} height={480} className="w-full h-40 sm:h-48 object-cover" />
                                     ) : (
                                         <div className="bg-gradient-to-br from-indigo-50 to-indigo-100 w-full h-40 sm:h-48 flex items-center justify-center">
                                             <span className="text-indigo-400 text-3xl">🖨️</span>

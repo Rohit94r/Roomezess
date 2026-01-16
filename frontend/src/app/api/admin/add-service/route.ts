@@ -4,7 +4,7 @@ import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
 export async function POST(req: Request) {
   try {
     const body = await req.json()
-    const { name, description, price, category, service_type, available, owner_id } = body || {}
+    const { name, description, price, category, service_type, available, owner_id, image_url, map_link } = body || {}
     if (
       !name ||
       !service_type ||
@@ -23,6 +23,8 @@ export async function POST(req: Request) {
       service_type,
       available: available ?? true,
       owner_id,
+      image_url: image_url ?? null,
+      map_link: map_link ?? null,
     }
     const { data, error } = await supabaseAdmin
       .from('services')

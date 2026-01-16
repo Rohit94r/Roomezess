@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { adminAPI, servicesAPI, eventsAPI, authAPI } from '@/lib/api';
+import { adminAPI, servicesAPI, eventsAPI, authAPI, roomsAPI, roommatesAPI } from '@/lib/api';
 
 interface ServiceItem {
   id: string;
@@ -30,7 +30,7 @@ export default function AdminDashboard() {
   const [authChecking, setAuthChecking] = useState(true);
   const [authorized, setAuthorized] = useState(false);
   const [adminId, setAdminId] = useState<string>('');
-  const [activeTab, setActiveTab] = useState<'users' | 'services' | 'events'>('services');
+  const [activeTab, setActiveTab] = useState<'users' | 'services' | 'events' | 'rooms' | 'roommates'>('services');
   const [serviceType, setServiceType] = useState<'canteen' | 'printing' | 'laundry' | 'mess'>('mess');
   const [services, setServices] = useState<ServiceItem[]>([]);
   const [loadingServices, setLoadingServices] = useState(false);
@@ -42,6 +42,9 @@ export default function AdminDashboard() {
     price: '',
     category: 'veg',
     available: true,
+    image_url: '',
+    map_link: '',
+    imageFile: null as File | null,
   });
 
   const [users, setUsers] = useState<UserRow[]>([]);
@@ -52,9 +55,46 @@ export default function AdminDashboard() {
     description: '',
     date: '',
     location: '',
+    map_link: '',
+    register_link: '',
+    image_url: '',
+    imageFile: null as File | null,
   });
   const [events, setEvents] = useState<any[]>([]);
   const [loadingEvents, setLoadingEvents] = useState(false);
+
+  // Rooms state
+  const [newRoom, setNewRoom] = useState({
+    title: '',
+    description: '',
+    rent: '',
+    distance_km: '',
+    amenities: '',
+    contact: '',
+    image_url: '',
+    map_link: '',
+    room_type: 'single' as 'single' | 'double' | 'triple' | 'shared',
+    furnishing: 'semi-furnished' as 'unfurnished' | 'semi-furnished' | 'fully-furnished',
+    available: true,
+    imageFile: null as File | null,
+  });
+  const [rooms, setRooms] = useState<any[]>([]);
+  const [loadingRooms, setLoadingRooms] = useState(false);
+
+  // Roommates state
+  const [newRoommate, setNewRoommate] = useState({
+    name: '',
+    gender: 'any' as 'male' | 'female' | 'any',
+    budget: '',
+    location: '',
+    preferences: '',
+    contact: '',
+    image_url: '',
+    available: true,
+    imageFile: null as File | null,
+  });
+  const [roommates, setRoommates] = useState<any[]>([]);
+  const [loadingRoommates, setLoadingRoommates] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -67,6 +107,8 @@ export default function AdminDashboard() {
           loadServices();
           loadUsers();
           loadEvents();
+          loadRooms();
+          loadRoommates();
         } else {
           setAuthorized(false);
           router.push('/');
@@ -103,6 +145,28 @@ export default function AdminDashboard() {
     setMessage('');
     try {
       const priceNum = parseFloat(newService.price || '0');
+      
+      // Handle image upload if file exists
+      let imageUrl = newService.image_url;
+      if (newService.imageFile) {
+        const formData = new FormData();
+        formData.append('file', newService.imageFile);
+        formData.append('bucket', 'service-images');
+        
+        const uploadRes = await fetch('/api/admin/upload-image', {
+          method: 'POST',
+          body: formData,
+        });
+        
+        if (!uploadRes.ok) {
+          const uploadErr = await uploadRes.json().catch(() => ({}));
+          throw new Error(uploadErr?.error || 'Failed to upload image');
+        }
+        
+        const uploadData = await uploadRes.json();
+        imageUrl = uploadData.url;
+      }
+      
       const res = await fetch('/api/admin/add-service', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -114,14 +178,16 @@ export default function AdminDashboard() {
           service_type: serviceType,
           available: newService.available,
           owner_id: adminId,
+          image_url: imageUrl,
+          map_link: newService.map_link,
         }),
       });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
         throw new Error(j?.error || 'Failed to add service');
       }
-      setMessage('Service added');
-      setNewService({ name: '', description: '', price: '', category: 'veg', available: true });
+      setMessage('Service added successfully!');
+      setNewService({ name: '', description: '', price: '', category: 'veg', available: true, image_url: '', map_link: '', imageFile: null });
       loadServices();
     } catch (e: any) {
       setMessage(e?.message || 'Failed to add service');
@@ -179,18 +245,223 @@ export default function AdminDashboard() {
     }
   };
 
+  const loadRooms = async () => {
+    setLoadingRooms(true);
+    try {
+      const res = await roomsAPI.getRoomsByOwner();
+      setRooms(res.data.data || []);
+    } catch (_) {
+      // ignore
+    } finally {
+      setLoadingRooms(false);
+    }
+  };
+
+  const loadRoommates = async () => {
+    setLoadingRoommates(true);
+    try {
+      const res = await roommatesAPI.getRoommatesByOwner();
+      setRoommates(res.data.data || []);
+    } catch (_) {
+      // ignore
+    } finally {
+      setLoadingRoommates(false);
+    }
+  };
+
   const addEvent = async (e: React.FormEvent) => {
     e.preventDefault();
+    setMessage('');
     try {
+      // Validate registration link if provided
+      if (newEvent.register_link && !isValidUrl(newEvent.register_link)) {
+        throw new Error('Please enter a valid registration link URL');
+      }
+      
+      // Handle image upload if file exists
+      let imageUrl = newEvent.image_url;
+      if (newEvent.imageFile) {
+        const formData = new FormData();
+        formData.append('file', newEvent.imageFile);
+        formData.append('bucket', 'event-images');
+        
+        const uploadRes = await fetch('/api/admin/upload-image', {
+          method: 'POST',
+          body: formData,
+        });
+        
+        if (!uploadRes.ok) {
+          const uploadErr = await uploadRes.json().catch(() => ({}));
+          throw new Error(uploadErr?.error || 'Failed to upload image');
+        }
+        
+        const uploadData = await uploadRes.json();
+        imageUrl = uploadData.url;
+      }
+      
       await eventsAPI.createEvent({
         title: newEvent.title,
         description: newEvent.description,
         date: newEvent.date,
         location: newEvent.location,
+        map_link: newEvent.map_link,
+        register_link: newEvent.register_link,
+        image_url: imageUrl,
       });
-      setNewEvent({ title: '', description: '', date: '', location: '' });
+      setMessage('Event added successfully!');
+      setNewEvent({ title: '', description: '', date: '', location: '', map_link: '', register_link: '', image_url: '', imageFile: null });
       loadEvents();
-    } catch (_) {
+    } catch (e: any) {
+      setMessage(e?.message || 'Failed to add event');
+    }
+  };
+
+  const isValidUrl = (url: string) => {
+    try {
+      new URL(url);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  const addRoom = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setMessage('');
+    try {
+      const rentNum = parseFloat(newRoom.rent || '0');
+      const distanceNum = newRoom.distance_km ? parseFloat(newRoom.distance_km) : null;
+      const amenitiesArray = newRoom.amenities.split(',').map(a => a.trim()).filter(a => a);
+
+      // Handle image upload if file exists
+      let imageUrl = newRoom.image_url;
+      if (newRoom.imageFile) {
+        const formData = new FormData();
+        formData.append('file', newRoom.imageFile);
+        formData.append('bucket', 'room-images');
+        
+        const uploadRes = await fetch('/api/admin/upload-image', {
+          method: 'POST',
+          body: formData,
+        });
+        
+        if (!uploadRes.ok) {
+          const uploadErr = await uploadRes.json().catch(() => ({}));
+          throw new Error(uploadErr?.error || 'Failed to upload image');
+        }
+        
+        const uploadData = await uploadRes.json();
+        imageUrl = uploadData.url;
+      }
+
+      await fetch('/api/admin/add-room', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: newRoom.title,
+          description: newRoom.description,
+          rent: rentNum,
+          distance_km: distanceNum,
+          amenities: amenitiesArray,
+          contact: newRoom.contact,
+          image_url: imageUrl,
+          map_link: newRoom.map_link,
+          room_type: newRoom.room_type,
+          furnishing: newRoom.furnishing,
+          available: newRoom.available,
+          owner_id: adminId,
+        }),
+      });
+      setMessage('Room added successfully!');
+      setNewRoom({ title: '', description: '', rent: '', distance_km: '', amenities: '', contact: '', image_url: '', map_link: '', room_type: 'single', furnishing: 'semi-furnished', available: true, imageFile: null });
+      loadRooms();
+    } catch (e: any) {
+      setMessage(e?.message || 'Failed to add room');
+    }
+  };
+
+  const toggleRoomAvailability = async (room: any) => {
+    try {
+      await roomsAPI.updateRoom(room.id, { available: !room.available });
+      loadRooms();
+    } catch (e) {
+      // ignore
+    }
+  };
+
+  const deleteRoom = async (id: string) => {
+    try {
+      await roomsAPI.deleteRoom(id);
+      loadRooms();
+    } catch (e) {
+      // ignore
+    }
+  };
+
+  const addRoommate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setMessage('');
+    try {
+      const budgetNum = newRoommate.budget ? parseFloat(newRoommate.budget) : null;
+
+      // Handle image upload if file exists
+      let imageUrl = newRoommate.image_url;
+      if (newRoommate.imageFile) {
+        const formData = new FormData();
+        formData.append('file', newRoommate.imageFile);
+        formData.append('bucket', 'roommate-images');
+        
+        const uploadRes = await fetch('/api/admin/upload-image', {
+          method: 'POST',
+          body: formData,
+        });
+        
+        if (!uploadRes.ok) {
+          const uploadErr = await uploadRes.json().catch(() => ({}));
+          throw new Error(uploadErr?.error || 'Failed to upload image');
+        }
+        
+        const uploadData = await uploadRes.json();
+        imageUrl = uploadData.url;
+      }
+
+      await fetch('/api/admin/add-roommate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: newRoommate.name,
+          gender: newRoommate.gender,
+          budget: budgetNum,
+          location: newRoommate.location,
+          preferences: newRoommate.preferences,
+          contact: newRoommate.contact,
+          image_url: imageUrl,
+          available: newRoommate.available,
+          owner_id: adminId,
+        }),
+      });
+      setMessage('Roommate listing added successfully!');
+      setNewRoommate({ name: '', gender: 'any', budget: '', location: '', preferences: '', contact: '', image_url: '', available: true, imageFile: null });
+      loadRoommates();
+    } catch (e: any) {
+      setMessage(e?.message || 'Failed to add roommate');
+    }
+  };
+
+  const toggleRoommateAvailability = async (roommate: any) => {
+    try {
+      await roommatesAPI.updateRoommate(roommate.id, { available: !roommate.available });
+      loadRoommates();
+    } catch (e) {
+      // ignore
+    }
+  };
+
+  const deleteRoommate = async (id: string) => {
+    try {
+      await roommatesAPI.deleteRoommate(id);
+      loadRoommates();
+    } catch (e) {
       // ignore
     }
   };
@@ -230,6 +501,18 @@ export default function AdminDashboard() {
                 className={`px-3 py-2 rounded-md text-sm font-medium ${activeTab === 'events' ? 'bg-primary-100 text-primary-700' : 'text-gray-500 hover:text-gray-700'}`}
               >
                 Events
+              </button>
+              <button
+                onClick={() => setActiveTab('rooms')}
+                className={`px-3 py-2 rounded-md text-sm font-medium ${activeTab === 'rooms' ? 'bg-primary-100 text-primary-700' : 'text-gray-500 hover:text-gray-700'}`}
+              >
+                Rooms
+              </button>
+              <button
+                onClick={() => setActiveTab('roommates')}
+                className={`px-3 py-2 rounded-md text-sm font-medium ${activeTab === 'roommates' ? 'bg-primary-100 text-primary-700' : 'text-gray-500 hover:text-gray-700'}`}
+              >
+                Roommates
               </button>
               <button
                 onClick={() => setActiveTab('users')}
@@ -336,6 +619,28 @@ export default function AdminDashboard() {
                       <option value="non-veg">Non-Veg</option>
                       <option value="service">Service</option>
                     </select>
+                    <div className="border-t pt-4">
+                      <h3 className="font-semibold text-sm text-gray-900 mb-2">Service Image</h3>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => setNewService({ ...newService, imageFile: e.target.files?.[0] || null })}
+                        className="w-full border rounded-md px-3 py-2 text-sm"
+                      />
+                      {newService.imageFile && (
+                        <p className="text-xs text-gray-600 mt-1">Selected: {newService.imageFile.name}</p>
+                      )}
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-900 mb-2">Google Map Link</label>
+                      <input
+                        type="url"
+                        placeholder="https://maps.google.com/..."
+                        value={newService.map_link}
+                        onChange={(e) => setNewService({ ...newService, map_link: e.target.value })}
+                        className="w-full border rounded-md px-3 py-2 text-sm"
+                      />
+                    </div>
                     <label className="inline-flex items-center gap-2 text-sm">
                       <input
                         type="checkbox"
@@ -383,6 +688,11 @@ export default function AdminDashboard() {
                   <h2 className="text-lg font-medium text-gray-900">Add New Event</h2>
                 </div>
                 <div className="p-6">
+                  {message && (
+                    <div className={`mb-4 p-3 rounded-md ${message.includes('successfully') || message.includes('added') ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'}`}>
+                      {message}
+                    </div>
+                  )}
                   <form onSubmit={addEvent} className="space-y-4">
                     <input
                       type="text"
@@ -415,6 +725,39 @@ export default function AdminDashboard() {
                       className="w-full border rounded-md px-3 py-2"
                       required
                     />
+                    <div className="border-t pt-4">
+                      <h3 className="font-semibold text-sm text-gray-900 mb-2">Event Image</h3>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => setNewEvent({ ...newEvent, imageFile: e.target.files?.[0] || null })}
+                        className="w-full border rounded-md px-3 py-2 text-sm"
+                      />
+                      {newEvent.imageFile && (
+                        <p className="text-xs text-gray-600 mt-1">Selected: {newEvent.imageFile.name}</p>
+                      )}
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-900 mb-2">Google Map Link</label>
+                      <input
+                        type="url"
+                        placeholder="https://maps.google.com/..."
+                        value={newEvent.map_link}
+                        onChange={(e) => setNewEvent({ ...newEvent, map_link: e.target.value })}
+                        className="w-full border rounded-md px-3 py-2 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-900 mb-2">Registration Link *</label>
+                      <input
+                        type="url"
+                        placeholder="https://forms.google.com/... or event registration URL"
+                        value={newEvent.register_link}
+                        onChange={(e) => setNewEvent({ ...newEvent, register_link: e.target.value })}
+                        className="w-full border rounded-md px-3 py-2 text-sm"
+                      />
+                      <p className="text-xs text-gray-600 mt-1">Users will click "Register Now" to open this link</p>
+                    </div>
                     <button type="submit" className="w-full bg-primary-600 hover:bg-primary-700 text-white font-semibold px-4 py-2 rounded-lg">
                       Add Event
                     </button>
@@ -457,6 +800,270 @@ export default function AdminDashboard() {
                     ))}
                   </div>
                 )}
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'rooms' && (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2 bg-white shadow rounded-lg overflow-hidden">
+                <div className="px-6 py-4 border-b border-gray-200">
+                  <h2 className="text-lg font-medium text-gray-900">Manage Rooms</h2>
+                </div>
+                <div className="p-6">
+                  {loadingRooms ? (
+                    <div>Loading rooms…</div>
+                  ) : rooms.length === 0 ? (
+                    <div className="text-gray-600">No rooms found</div>
+                  ) : (
+                    <div className="space-y-3">
+                      {rooms.map((r: any) => (
+                        <div key={r.id} className="flex items-center justify-between rounded-lg border p-3">
+                          <div className="flex-1">
+                            <div className="font-semibold">{r.title}</div>
+                            <div className="text-sm text-gray-600">₹{r.rent}/mo · {r.room_type} · {r.distance_km ? `${r.distance_km}km` : 'N/A'}</div>
+                            {r.image_url && <div className="text-xs text-blue-600">📷 Image: Yes</div>}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => toggleRoomAvailability(r)}
+                              className={`px-3 py-1.5 rounded-lg text-xs font-semibold ${r.available ? 'bg-gray-100 text-gray-800' : 'bg-yellow-100 text-yellow-800'}`}
+                            >
+                              {r.available ? 'Disable' : 'Enable'}
+                            </button>
+                            <button
+                              onClick={() => deleteRoom(r.id)}
+                              className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-red-100 text-red-700"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="bg-white shadow rounded-lg overflow-hidden">
+                <div className="px-6 py-4 border-b border-gray-200">
+                  <h2 className="text-lg font-medium text-gray-900">Add New Room</h2>
+                </div>
+                <div className="p-6">
+                  {message && (
+                    <div className={`mb-4 p-3 rounded-md text-sm ${message.includes('added') || message.includes('successfully') ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'}`}>
+                      {message}
+                    </div>
+                  )}
+                  <form onSubmit={addRoom} className="space-y-3">
+                    <input
+                      type="text"
+                      placeholder="Room Title"
+                      value={newRoom.title}
+                      onChange={(e) => setNewRoom({ ...newRoom, title: e.target.value })}
+                      className="w-full border rounded-md px-3 py-2 text-sm"
+                      required
+                    />
+                    <textarea
+                      placeholder="Description"
+                      value={newRoom.description}
+                      onChange={(e) => setNewRoom({ ...newRoom, description: e.target.value })}
+                      className="w-full border rounded-md px-3 py-2 text-sm"
+                      rows={2}
+                    />
+                    <input
+                      type="number"
+                      placeholder="Rent (₹/month)"
+                      value={newRoom.rent}
+                      onChange={(e) => setNewRoom({ ...newRoom, rent: e.target.value })}
+                      className="w-full border rounded-md px-3 py-2 text-sm"
+                      required
+                      min="0"
+                    />
+                    <input
+                      type="number"
+                      placeholder="Distance (km)"
+                      value={newRoom.distance_km}
+                      onChange={(e) => setNewRoom({ ...newRoom, distance_km: e.target.value })}
+                      className="w-full border rounded-md px-3 py-2 text-sm"
+                      step="0.1"
+                    />
+                    <select
+                      value={newRoom.room_type}
+                      onChange={(e) => setNewRoom({ ...newRoom, room_type: e.target.value as any })}
+                      className="w-full border rounded-md px-3 py-2 text-sm"
+                    >
+                      <option value="single">Single</option>
+                      <option value="double">Double</option>
+                      <option value="triple">Triple</option>
+                      <option value="shared">Shared</option>
+                    </select>
+                    <select
+                      value={newRoom.furnishing}
+                      onChange={(e) => setNewRoom({ ...newRoom, furnishing: e.target.value as any })}
+                      className="w-full border rounded-md px-3 py-2 text-sm"
+                    >
+                      <option value="unfurnished">Unfurnished</option>
+                      <option value="semi-furnished">Semi-Furnished</option>
+                      <option value="fully-furnished">Fully-Furnished</option>
+                    </select>
+                    <input
+                      type="text"
+                      placeholder="Amenities (comma-separated)"
+                      value={newRoom.amenities}
+                      onChange={(e) => setNewRoom({ ...newRoom, amenities: e.target.value })}
+                      className="w-full border rounded-md px-3 py-2 text-sm"
+                    />
+                    <input
+                      type="tel"
+                      placeholder="Contact Number"
+                      value={newRoom.contact}
+                      onChange={(e) => setNewRoom({ ...newRoom, contact: e.target.value })}
+                      className="w-full border rounded-md px-3 py-2 text-sm"
+                      required
+                    />
+                    <input
+                      type="url"
+                      placeholder="Map Link (Google Maps)"
+                      value={newRoom.map_link}
+                      onChange={(e) => setNewRoom({ ...newRoom, map_link: e.target.value })}
+                      className="w-full border rounded-md px-3 py-2 text-sm"
+                    />
+                    <div className="border-2 border-dashed rounded-lg p-3">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => setNewRoom({ ...newRoom, imageFile: e.target.files?.[0] || null })}
+                        className="w-full text-sm"
+                      />
+                      {newRoom.imageFile && <p className="text-xs text-green-600 mt-1">✓ {newRoom.imageFile.name}</p>}
+                    </div>
+                    <button
+                      type="submit"
+                      className="w-full bg-primary-600 text-white py-2 rounded-md font-semibold text-sm hover:bg-primary-700"
+                    >
+                      Add Room
+                    </button>
+                  </form>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'roommates' && (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2 bg-white shadow rounded-lg overflow-hidden">
+                <div className="px-6 py-4 border-b border-gray-200">
+                  <h2 className="text-lg font-medium text-gray-900">Manage Roommate Listings</h2>
+                </div>
+                <div className="p-6">
+                  {loadingRoommates ? (
+                    <div>Loading roommate listings…</div>
+                  ) : roommates.length === 0 ? (
+                    <div className="text-gray-600">No roommate listings found</div>
+                  ) : (
+                    <div className="space-y-3">
+                      {roommates.map((rm: any) => (
+                        <div key={rm.id} className="flex items-center justify-between rounded-lg border p-3">
+                          <div className="flex-1">
+                            <div className="font-semibold">{rm.name}</div>
+                            <div className="text-sm text-gray-600">{rm.gender} · Budget: ₹{rm.budget || 'N/A'} · {rm.location || 'N/A'}</div>
+                            {rm.image_url && <div className="text-xs text-blue-600">📷 Image: Yes</div>}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => toggleRoommateAvailability(rm)}
+                              className={`px-3 py-1.5 rounded-lg text-xs font-semibold ${rm.available ? 'bg-gray-100 text-gray-800' : 'bg-yellow-100 text-yellow-800'}`}
+                            >
+                              {rm.available ? 'Disable' : 'Enable'}
+                            </button>
+                            <button
+                              onClick={() => deleteRoommate(rm.id)}
+                              className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-red-100 text-red-700"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="bg-white shadow rounded-lg overflow-hidden">
+                <div className="px-6 py-4 border-b border-gray-200">
+                  <h2 className="text-lg font-medium text-gray-900">Add Roommate Listing</h2>
+                </div>
+                <div className="p-6 max-h-[600px] overflow-y-auto">
+                  {message && (
+                    <div className={`mb-4 p-3 rounded-md text-sm ${message.includes('added') || message.includes('successfully') ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'}`}>
+                      {message}
+                    </div>
+                  )}
+                  <form onSubmit={addRoommate} className="space-y-3">
+                    <input
+                      type="text"
+                      placeholder="Name"
+                      value={newRoommate.name}
+                      onChange={(e) => setNewRoommate({ ...newRoommate, name: e.target.value })}
+                      className="w-full border rounded-md px-3 py-2 text-sm"
+                      required
+                    />
+                    <select
+                      value={newRoommate.gender}
+                      onChange={(e) => setNewRoommate({ ...newRoommate, gender: e.target.value as any })}
+                      className="w-full border rounded-md px-3 py-2 text-sm"
+                    >
+                      <option value="male">Male</option>
+                      <option value="female">Female</option>
+                      <option value="any">Any</option>
+                    </select>
+                    <input
+                      type="number"
+                      placeholder="Budget (₹/month)"
+                      value={newRoommate.budget}
+                      onChange={(e) => setNewRoommate({ ...newRoommate, budget: e.target.value })}
+                      className="w-full border rounded-md px-3 py-2 text-sm"
+                      min="0"
+                    />
+                    <input
+                      type="text"
+                      placeholder="Location/Area"
+                      value={newRoommate.location}
+                      onChange={(e) => setNewRoommate({ ...newRoommate, location: e.target.value })}
+                      className="w-full border rounded-md px-3 py-2 text-sm"
+                    />
+                    <textarea
+                      placeholder="Preferences"
+                      value={newRoommate.preferences}
+                      onChange={(e) => setNewRoommate({ ...newRoommate, preferences: e.target.value })}
+                      className="w-full border rounded-md px-3 py-2 text-sm"
+                      rows={2}
+                    />
+                    <input
+                      type="tel"
+                      placeholder="Contact Number"
+                      value={newRoommate.contact}
+                      onChange={(e) => setNewRoommate({ ...newRoommate, contact: e.target.value })}
+                      className="w-full border rounded-md px-3 py-2 text-sm"
+                      required
+                    />
+                    <div className="border-2 border-dashed rounded-lg p-3">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => setNewRoommate({ ...newRoommate, imageFile: e.target.files?.[0] || null })}
+                        className="w-full text-sm"
+                      />
+                      {newRoommate.imageFile && <p className="text-xs text-green-600 mt-1">✓ {newRoommate.imageFile.name}</p>}
+                    </div>
+                    <button
+                      type="submit"
+                      className="w-full bg-primary-600 text-white py-2 rounded-md font-semibold text-sm hover:bg-primary-700"
+                    >
+                      Add Roommate
+                    </button>
+                  </form>
+                </div>
               </div>
             </div>
           )}

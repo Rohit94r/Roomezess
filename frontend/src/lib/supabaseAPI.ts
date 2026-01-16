@@ -737,7 +737,11 @@ export const eventsAPI = {
         title: eventData.title,
         description: eventData.description,
         date: eventData.date,
-        location: eventData.location
+        location: eventData.location,
+        image_url: eventData.image_url || null,
+        map_link: eventData.map_link || null,
+        register_link: eventData.register_link || null,
+        owner_id: user.id
       })
       .select()
       .single()
@@ -871,6 +875,97 @@ export const ordersAPI = {
       throw errorResponse;
     }
     return { data: { success: true, data } }
+  }
+}
+
+// Roommates API calls
+export const roommatesAPI = {
+  getRoommates: async () => {
+    const { data, error } = await supabase
+      .from('roommates_admin')
+      .select('*')
+      .eq('available', true)
+      .order('created_at', { ascending: false })
+
+    if (error) throw error
+
+    return {
+      data: {
+        success: true,
+        count: data.length,
+        data: data
+      }
+    }
+  },
+
+  getRoommatesByOwner: async () => {
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) throw authError || new Error('Not authenticated')
+
+    const { data, error } = await supabase
+      .from('roommates_admin')
+      .select('*')
+      .eq('owner_id', user.id)
+      .order('created_at', { ascending: false })
+
+    if (error) throw error
+
+    return {
+      data: {
+        success: true,
+        count: data.length,
+        data: data
+      }
+    }
+  },
+
+  createRoommate: async (roommateData: any) => {
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) throw authError || new Error('Not authenticated')
+
+    const { data, error } = await supabase
+      .from('roommates_admin')
+      .insert({
+        name: roommateData.name,
+        gender: roommateData.gender || null,
+        budget: roommateData.budget || null,
+        location: roommateData.location || null,
+        preferences: roommateData.preferences || null,
+        contact: roommateData.contact,
+        image_url: roommateData.image_url || null,
+        available: roommateData.available !== false,
+        owner_id: user.id
+      })
+      .select()
+      .single()
+
+    if (error) throw error
+
+    return { data: { success: true, data } }
+  },
+
+  updateRoommate: async (roommateId: string, roommateData: any) => {
+    const { data, error } = await supabase
+      .from('roommates_admin')
+      .update(roommateData)
+      .eq('id', roommateId)
+      .select()
+      .single()
+
+    if (error) throw error
+
+    return { data: { success: true, data } }
+  },
+
+  deleteRoommate: async (roommateId: string) => {
+    const { error } = await supabase
+      .from('roommates_admin')
+      .delete()
+      .eq('id', roommateId)
+
+    if (error) throw error
+
+    return { data: { success: true } }
   }
 }
 

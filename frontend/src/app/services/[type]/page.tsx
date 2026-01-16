@@ -13,6 +13,8 @@ interface ServiceItem {
   service_type: 'canteen' | 'printing' | 'laundry' | 'stationery' | 'electronics' | 'tution' | 'mess';
   available: boolean;
   image?: string;
+  image_url?: string;
+  map_link?: string;
   owner_id: string;
   created_at: string;
   category?: string;
@@ -73,9 +75,9 @@ export default function ServiceTypePage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 md:gap-6">
               {items.map((item) => (
                 <div key={item.id} className="bg-white rounded-2xl shadow-md overflow-hidden hover:shadow-xl transition-all duration-300 border border-gray-100 active:scale-[0.98]">
-                  {item.image ? (
+                  {item.image_url || item.image ? (
                     <Image
-                      src={item.image}
+                      src={item.image_url || item.image || ''}
                       alt={item.name}
                       width={800}
                       height={480}
@@ -97,22 +99,37 @@ export default function ServiceTypePage() {
                       </span>
                     </div>
                     <p className="text-sm sm:text-base text-gray-600 mb-4 line-clamp-2">{item.description}</p>
-                  <div className="flex justify-between items-center">
-                    <span className="text-lg sm:text-xl md:text-2xl font-bold text-primary-600">₹{item.price}</span>
-                    <button
-                      className="bg-primary-600 hover:bg-primary-700 active:bg-primary-800 text-white py-2.5 px-4 sm:px-5 rounded-xl font-semibold text-sm sm:text-base shadow-md hover:shadow-lg transition-all active:scale-95"
-                      onClick={() => {
-                        const target =
-                          item.service_type === 'printing' ? '/printing' :
-                          item.service_type === 'laundry' ? '/laundry' :
-                          item.service_type === 'mess' || item.service_type === 'canteen' ? '/canteen' :
-                          '/';
-                        router.push(target);
-                      }}
-                    >
-                      Book +
-                    </button>
-                  </div>
+                    
+                    {/* Map Link */}
+                    {item.map_link && (
+                      <div className="mb-4">
+                        <a
+                          href={item.map_link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs sm:text-sm text-primary-600 hover:text-primary-700 font-semibold flex items-center gap-1"
+                        >
+                          <span>📍</span> View Location
+                        </a>
+                      </div>
+                    )}
+                    
+                    <div className="flex justify-between items-center">
+                      <span className="text-lg sm:text-xl md:text-2xl font-bold text-primary-600">₹{item.price}</span>
+                      <button
+                        className="bg-primary-600 hover:bg-primary-700 active:bg-primary-800 text-white py-2.5 px-4 sm:px-5 rounded-xl font-semibold text-sm sm:text-base shadow-md hover:shadow-lg transition-all active:scale-95"
+                        onClick={() => {
+                          const target =
+                            item.service_type === 'printing' ? '/printing' :
+                            item.service_type === 'laundry' ? '/laundry' :
+                            item.service_type === 'mess' || item.service_type === 'canteen' ? '/canteen' :
+                            '/';
+                          router.push(target);
+                        }}
+                      >
+                        Book +
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}
