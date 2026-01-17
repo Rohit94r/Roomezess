@@ -1,1 +1,9 @@
-{\n  \"extends\": [\"next/core-web-vitals\"],\n  \"rules\": {\n    \"@next/next/no-sync-scripts\": \"off\",\n    \"react/no-unescaped-entities\": \"off\",\n    \"react-hooks/exhaustive-deps\": \"off\",\n    \"@next/next/no-img-element\": \"off\"\n  }\n}
+{
+  "extends": ["next/core-web-vitals"],
+  "rules": {
+    "@next/next/no-sync-scripts": "off",
+    "react/no-unescaped-entities": "off", 
+    "react-hooks/exhaustive-deps": "off",
+    "@next/next/no-img-element": "off"
+  }
+}

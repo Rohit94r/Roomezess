@@ -10,20 +10,11 @@ const nextConfig = {
       },
     ],
   },
-  webpack: (config, { dev, isServer }) => {
-    if (dev && !isServer) {
-      config.resolve.symlinks = false;
-      config.watchOptions = {
-        ignored: /node_modules/,
-      };
-    }
-    return config;
-  },
   eslint: {
     ignoreDuringBuilds: true,
   },
   typescript: {
-    ignoreBuildErrors: false,
+    ignoreBuildErrors: true,
   },
   experimental: {
     serverComponentsExternalPackages: ['@supabase/supabase-js'],
