@@ -340,7 +340,7 @@ export default function CanteenPage() {
                   {selectedMeal === 'all' ? 'No items available' : `No items available for ${selectedMeal}`}
                 </p>
                 <p className="text-gray-500 text-sm">
-                  {selectedMeal === &apos;all&apos; ? &apos;Check back later for menu updates&apos; : &apos;Try switching to a different meal time&apos;}
+                  {selectedMeal === 'all' ? 'Check back later for menu updates' : 'Try switching to a different meal time'}
                 </p>
               </div>
             )}
