@@ -304,7 +304,7 @@ export default function RoomsPage() {
                   <span className="px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-xs font-medium">₹{roommate.budget}</span>
                   <span className="px-3 py-1 bg-purple-50 text-purple-700 rounded-full text-xs font-medium capitalize">{roommate.gender}</span>
                 </div>
-                <p className="mt-4 text-sm text-gray-600 line-clamp-2">"{roommate.preferences}"</p>
+                <p className="mt-4 text-sm text-gray-600 line-clamp-2">&ldquo;{roommate.preferences}&rdquo;</p>
                 <button className="mt-6 w-full bg-primary-600 text-white py-2 rounded-xl font-semibold shadow hover:bg-primary-700 transition-colors">
                   Connect
                 </button>

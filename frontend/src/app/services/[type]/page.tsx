@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
 import { useParams, useRouter } from 'next/navigation';
 import { servicesAPI } from '../../../lib/api';
@@ -27,11 +27,7 @@ export default function ServiceTypePage() {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
-  useEffect(() => {
-    fetchServices();
-  }, [serviceType]);
-
-  const fetchServices = async () => {
+  const fetchServices = useCallback(async () => {
     try {
       const response = await servicesAPI.getServicesByType(serviceType);
       // Handle the response structure from Supabase API
@@ -43,7 +39,11 @@ export default function ServiceTypePage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [serviceType]);
+
+  useEffect(() => {
+    fetchServices();
+  }, [fetchServices]);
 
   if (loading) {
     return (
