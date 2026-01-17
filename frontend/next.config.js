@@ -6,7 +6,8 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  swcMinify: false,
+  output: 'export',
+  trailingSlash: true,
   images: {
     unoptimized: true
   }
