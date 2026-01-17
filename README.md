@@ -2,6 +2,8 @@
 
 A comprehensive digital platform for campus living and daily services, built with Next.js and Supabase.
 
+**Version**: 2.1.0 - Latest Update
+
 ## Features
 
 - **Canteen Ordering**: Order food from multiple canteens with Razorpay payment integration
