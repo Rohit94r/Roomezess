@@ -1,11 +1,13 @@
 {
-    "name": "roomezes-supabase",
-    "version": "2.0.0",
-    "description": "Roomezes - A Student-Centric Digital Platform for Campus Living & Daily Services powered by Supabase",
-    "license": "MIT",
-    "scripts": {
-        "build": "cd frontend && npm run build",
-        "dev": "cd frontend && npm run dev",
-        "vercel-build": "cd frontend && npm install && npm run build"
-    }
+  "name": "roomezes-platform",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "cd frontend && npm run build",
+    "start": "cd frontend && npm start",
+    "dev": "cd frontend && npm run dev"
+  },
+  "workspaces": [
+    "frontend"
+  ]
 }
