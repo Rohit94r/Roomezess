@@ -19,15 +19,16 @@ export default function DiscussionsPage() {
       try {
         const prof = await authAPI.getProfile();
         const user = prof?.data?.user;
-        setIsVerified(Boolean(user?.isVerified));
+        const verified = Boolean(user?.isVerified);
+        setIsVerified(verified);
         setVerificationForm({ name: user?.name || '', collegeEmail: '' });
+        if (verified) {
+          await fetchPosts();
+        }
       } catch (_) {
         setIsVerified(false);
       } finally {
         setChecking(false);
-      }
-      if (isVerified) {
-        await fetchPosts();
       }
     })();
   }, []);

@@ -43,7 +43,7 @@ export default function ServiceTypePage() {
 
   useEffect(() => {
     fetchServices();
-  }, [fetchServices]);
+  }, [serviceType]);
 
   if (loading) {
     return (
