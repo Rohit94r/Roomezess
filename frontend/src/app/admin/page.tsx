@@ -1,8 +1,10 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { adminAPI, servicesAPI, eventsAPI, authAPI, roomsAPI, roommatesAPI } from '@/lib/api';
+import { adminAPI, servicesAPI, eventsAPI, authAPI, roomsAPI, roommatesAPI, laundryAPI } from '@/lib/api';
+import { servicesData, getAllServices, getServicesByType } from '@/data/servicesData';
 
 interface ServiceItem {
   id: string;
@@ -30,11 +32,12 @@ export default function AdminDashboard() {
   const [authChecking, setAuthChecking] = useState(true);
   const [authorized, setAuthorized] = useState(false);
   const [adminId, setAdminId] = useState<string>('');
-  const [activeTab, setActiveTab] = useState<'users' | 'services' | 'events' | 'rooms' | 'roommates'>('services');
+  const [activeTab, setActiveTab] = useState<'users' | 'services' | 'events' | 'rooms' | 'roommates' | 'laundry' | 'mess' | 'printing'>('services');
   const [serviceType, setServiceType] = useState<'canteen' | 'printing' | 'laundry' | 'mess'>('mess');
   const [services, setServices] = useState<ServiceItem[]>([]);
   const [loadingServices, setLoadingServices] = useState(false);
   const [message, setMessage] = useState('');
+  const [bulkImporting, setBulkImporting] = useState(false);
 
   const [newService, setNewService] = useState({
     name: '',
@@ -44,6 +47,7 @@ export default function AdminDashboard() {
     available: true,
     image_url: '',
     map_link: '',
+    pricing_details: '',
     imageFile: null as File | null,
   });
 
@@ -95,6 +99,45 @@ export default function AdminDashboard() {
   });
   const [roommates, setRoommates] = useState<any[]>([]);
   const [loadingRoommates, setLoadingRoommates] = useState(false);
+  const [newLaundry, setNewLaundry] = useState({
+    name: '',
+    description: '',
+    price: '',
+    phone: '',
+    address: '',
+    image_url: '',
+    pricing_details: '',
+    available: true,
+    imageFile: null as File | null,
+  });
+  const [laundryShops, setLaundryShops] = useState<any[]>([]);
+  const [loadingLaundry, setLoadingLaundry] = useState(false);
+
+  // Mess state
+  const [newMess, setNewMess] = useState({
+    name: '',
+    description: '',
+    price: '',
+    image_url: '',
+    pricing_details: '',
+    available: true,
+    imageFile: null as File | null,
+  });
+  const [messServices, setMessServices] = useState<any[]>([]);
+  const [loadingMess, setLoadingMess] = useState(false);
+
+  // Printing state
+  const [newPrinting, setNewPrinting] = useState({
+    name: '',
+    description: '',
+    price: '',
+    image_url: '',
+    pricing_details: '',
+    available: true,
+    imageFile: null as File | null,
+  });
+  const [printingServices, setPrintingServices] = useState<any[]>([]);
+  const [loadingPrinting, setLoadingPrinting] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -109,6 +152,9 @@ export default function AdminDashboard() {
           loadEvents();
           loadRooms();
           loadRoommates();
+          loadLaundryShops();
+          loadMessServices();
+          loadPrintingServices();
         } else {
           setAuthorized(false);
           router.push('/');
@@ -146,6 +192,16 @@ export default function AdminDashboard() {
     try {
       const priceNum = parseFloat(newService.price || '0');
       
+      // Parse pricing details JSON
+      let pricingDetails = null;
+      if (newService.pricing_details.trim()) {
+        try {
+          pricingDetails = JSON.parse(newService.pricing_details);
+        } catch {
+          throw new Error('Invalid pricing details JSON format');
+        }
+      }
+      
       // Handle image upload if file exists
       let imageUrl = newService.image_url;
       if (newService.imageFile) {
@@ -180,6 +236,7 @@ export default function AdminDashboard() {
           owner_id: adminId,
           image_url: imageUrl,
           map_link: newService.map_link,
+          pricing_details: pricingDetails,
         }),
       });
       if (!res.ok) {
@@ -187,7 +244,7 @@ export default function AdminDashboard() {
         throw new Error(j?.error || 'Failed to add service');
       }
       setMessage('Service added successfully!');
-      setNewService({ name: '', description: '', price: '', category: 'veg', available: true, image_url: '', map_link: '', imageFile: null });
+      setNewService({ name: '', description: '', price: '', category: 'veg', available: true, image_url: '', map_link: '', pricing_details: '', imageFile: null });
       loadServices();
     } catch (e: any) {
       setMessage(e?.message || 'Failed to add service');
@@ -466,6 +523,261 @@ export default function AdminDashboard() {
     }
   };
 
+  const loadLaundryShops = async () => {
+    setLoadingLaundry(true);
+    try {
+      const res = await servicesAPI.getServicesByType('laundry');
+      setLaundryShops(res.data.data || []);
+    } catch (_) {
+      // ignore
+    } finally {
+      setLoadingLaundry(false);
+    }
+  };
+
+  const addLaundryShop = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setMessage('');
+    try {
+      let pricingDetails = null;
+      if (newLaundry.pricing_details.trim()) {
+        pricingDetails = JSON.parse(newLaundry.pricing_details);
+      }
+
+      let imageUrl = newLaundry.image_url;
+      if (newLaundry.imageFile) {
+        const formData = new FormData();
+        formData.append('file', newLaundry.imageFile);
+        formData.append('bucket', 'laundry-images');
+        
+        const uploadRes = await fetch('/api/admin/upload-image', {
+          method: 'POST',
+          body: formData,
+        });
+        
+        if (uploadRes.ok) {
+          const uploadData = await uploadRes.json();
+          imageUrl = uploadData.url;
+        }
+      }
+
+      await servicesAPI.createService({
+        name: newLaundry.name,
+        description: newLaundry.description,
+        price: parseFloat(newLaundry.price),
+        service_type: 'laundry',
+        image_url: imageUrl,
+        pricing_details: pricingDetails,
+      });
+
+      setMessage('Laundry shop added successfully!');
+      setNewLaundry({ name: '', description: '', price: '', phone: '', address: '', image_url: '', pricing_details: '', available: true, imageFile: null });
+      loadLaundryShops();
+    } catch (e: any) {
+      setMessage(e?.message || 'Failed to add laundry shop');
+    }
+  };
+
+  const deleteLaundryShop = async (id: string) => {
+    try {
+      await servicesAPI.deleteService(id);
+      loadLaundryShops();
+    } catch (e) {
+      // ignore
+    }
+  };
+
+  const loadMessServices = async () => {
+    setLoadingMess(true);
+    try {
+      const res = await servicesAPI.getServicesByType('mess');
+      setMessServices(res.data.data || []);
+    } catch (_) {
+      // ignore
+    } finally {
+      setLoadingMess(false);
+    }
+  };
+
+  const addMessService = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setMessage('');
+    try {
+      let pricingDetails = null;
+      if (newMess.pricing_details.trim()) {
+        pricingDetails = JSON.parse(newMess.pricing_details);
+      }
+
+      let imageUrl = newMess.image_url;
+      if (newMess.imageFile) {
+        const formData = new FormData();
+        formData.append('file', newMess.imageFile);
+        formData.append('bucket', 'mess-images');
+        
+        const uploadRes = await fetch('/api/admin/upload-image', {
+          method: 'POST',
+          body: formData,
+        });
+        
+        if (uploadRes.ok) {
+          const uploadData = await uploadRes.json();
+          imageUrl = uploadData.url;
+        }
+      }
+
+      await servicesAPI.createService({
+        name: newMess.name,
+        description: newMess.description,
+        price: parseFloat(newMess.price),
+        service_type: 'mess',
+        image_url: imageUrl,
+        pricing_details: pricingDetails,
+      });
+
+      setMessage('Mess service added successfully!');
+      setNewMess({ name: '', description: '', price: '', image_url: '', pricing_details: '', available: true, imageFile: null });
+      loadMessServices();
+    } catch (e: any) {
+      setMessage(e?.message || 'Failed to add mess service');
+    }
+  };
+
+  const deleteMessService = async (id: string) => {
+    try {
+      await servicesAPI.deleteService(id);
+      loadMessServices();
+    } catch (e) {
+      // ignore
+    }
+  };
+
+  const loadPrintingServices = async () => {
+    setLoadingPrinting(true);
+    try {
+      const res = await servicesAPI.getServicesByType('printing');
+      setPrintingServices(res.data.data || []);
+    } catch (_) {
+      // ignore
+    } finally {
+      setLoadingPrinting(false);
+    }
+  };
+
+  const addPrintingService = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setMessage('');
+    try {
+      let pricingDetails = null;
+      if (newPrinting.pricing_details.trim()) {
+        pricingDetails = JSON.parse(newPrinting.pricing_details);
+      }
+
+      let imageUrl = newPrinting.image_url;
+      if (newPrinting.imageFile) {
+        const formData = new FormData();
+        formData.append('file', newPrinting.imageFile);
+        formData.append('bucket', 'printing-images');
+        
+        const uploadRes = await fetch('/api/admin/upload-image', {
+          method: 'POST',
+          body: formData,
+        });
+        
+        if (uploadRes.ok) {
+          const uploadData = await uploadRes.json();
+          imageUrl = uploadData.url;
+        }
+      }
+
+      await servicesAPI.createService({
+        name: newPrinting.name,
+        description: newPrinting.description,
+        price: parseFloat(newPrinting.price),
+        service_type: 'printing',
+        image_url: imageUrl,
+        pricing_details: pricingDetails,
+      });
+
+      setMessage('Printing service added successfully!');
+      setNewPrinting({ name: '', description: '', price: '', image_url: '', pricing_details: '', available: true, imageFile: null });
+      loadPrintingServices();
+    } catch (e: any) {
+      setMessage(e?.message || 'Failed to add printing service');
+    }
+  };
+
+  const deletePrintingService = async (id: string) => {
+    try {
+      await servicesAPI.deleteService(id);
+      loadPrintingServices();
+    } catch (e) {
+      // ignore
+    }
+  };
+
+  const bulkImportServices = async () => {
+    setBulkImporting(true);
+    setMessage('');
+    try {
+      const servicesToImport = getServicesByType(serviceType);
+      let successCount = 0;
+      let errorCount = 0;
+
+      for (const service of servicesToImport) {
+        try {
+          await fetch('/api/admin/add-service', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              name: service.name,
+              description: service.description,
+              price: service.price,
+              category: service.category,
+              service_type: serviceType,
+              available: service.available,
+              owner_id: adminId,
+              image_url: service.image_url,
+              map_link: service.map_link,
+            }),
+          });
+          successCount++;
+        } catch (e) {
+          errorCount++;
+        }
+      }
+
+      setMessage(`Bulk import completed! ${successCount} services added successfully${errorCount > 0 ? `, ${errorCount} failed` : ''}.`);
+      loadServices();
+    } catch (e: any) {
+      setMessage(e?.message || 'Bulk import failed');
+    } finally {
+      setBulkImporting(false);
+    }
+  };
+
+  const clearAllServices = async () => {
+    if (!confirm(`Are you sure you want to delete all ${serviceType} services? This action cannot be undone.`)) {
+      return;
+    }
+    
+    setMessage('');
+    try {
+      let deletedCount = 0;
+      for (const service of services) {
+        try {
+          await servicesAPI.deleteService(service.id);
+          deletedCount++;
+        } catch (e) {
+          // ignore individual failures
+        }
+      }
+      setMessage(`${deletedCount} services deleted successfully.`);
+      loadServices();
+    } catch (e: any) {
+      setMessage(e?.message || 'Failed to clear services');
+    }
+  };
+
   if (authChecking) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -496,6 +808,12 @@ export default function AdminDashboard() {
               >
                 Services
               </button>
+              <Link
+                href="/admin/canteen"
+                className="px-3 py-2 rounded-md text-sm font-medium text-gray-500 hover:text-gray-700 bg-red-50 hover:bg-red-100 border border-red-200"
+              >
+                🍽️ Canteen Management
+              </Link>
               <button
                 onClick={() => setActiveTab('events')}
                 className={`px-3 py-2 rounded-md text-sm font-medium ${activeTab === 'events' ? 'bg-primary-100 text-primary-700' : 'text-gray-500 hover:text-gray-700'}`}
@@ -520,6 +838,24 @@ export default function AdminDashboard() {
               >
                 Users
               </button>
+              <button
+                onClick={() => setActiveTab('laundry')}
+                className={`px-3 py-2 rounded-md text-sm font-medium ${activeTab === 'laundry' ? 'bg-primary-100 text-primary-700' : 'text-gray-500 hover:text-gray-700'}`}
+              >
+                🧺 Laundry
+              </button>
+              <button
+                onClick={() => setActiveTab('mess')}
+                className={`px-3 py-2 rounded-md text-sm font-medium ${activeTab === 'mess' ? 'bg-primary-100 text-primary-700' : 'text-gray-500 hover:text-gray-700'}`}
+              >
+                🍱 Mess
+              </button>
+              <button
+                onClick={() => setActiveTab('printing')}
+                className={`px-3 py-2 rounded-md text-sm font-medium ${activeTab === 'printing' ? 'bg-primary-100 text-primary-700' : 'text-gray-500 hover:text-gray-700'}`}
+              >
+                🖨️ Printing
+              </button>
             </nav>
           </div>
         </div>
@@ -528,24 +864,63 @@ export default function AdminDashboard() {
           {activeTab === 'services' && (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <div className="lg:col-span-2 bg-white shadow rounded-lg overflow-hidden">
-                <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-                  <h2 className="text-lg font-medium text-gray-900">Manage Services</h2>
-                  <select
-                    value={serviceType}
-                    onChange={(e) => setServiceType(e.target.value as any)}
-                    className="border rounded-md px-3 py-2"
-                  >
-                    <option value="mess">Mess</option>
-                    <option value="canteen">Canteen</option>
-                    <option value="printing">Printing</option>
-                    <option value="laundry">Laundry</option>
-                  </select>
+                <div className="px-6 py-4 border-b border-gray-200">
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-lg font-medium text-gray-900">Manage Services</h2>
+                    <select
+                      value={serviceType}
+                      onChange={(e) => setServiceType(e.target.value as any)}
+                      className="border rounded-md px-3 py-2"
+                    >
+                      <option value="mess">Mess</option>
+                      <option value="canteen">Canteen</option>
+                      <option value="printing">Printing</option>
+                      <option value="laundry">Laundry</option>
+                    </select>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={bulkImportServices}
+                      disabled={bulkImporting}
+                      className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white rounded-md text-sm font-medium"
+                    >
+                      {bulkImporting ? 'Importing...' : `Import All ${serviceType.charAt(0).toUpperCase() + serviceType.slice(1)} Services`}
+                    </button>
+                    <button
+                      onClick={clearAllServices}
+                      className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md text-sm font-medium"
+                    >
+                      Clear All {serviceType.charAt(0).toUpperCase() + serviceType.slice(1)} Services
+                    </button>
+                  </div>
                 </div>
                 <div className="p-6">
+                  {message && (
+                    <div className={`mb-4 p-3 rounded-md ${message.includes('added') || message.includes('completed') || message.includes('deleted') ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'}`}>
+                      {message}
+                    </div>
+                  )}
+                  
+                  {/* Preview Section */}
+                  <div className="mb-6 p-4 bg-blue-50 rounded-lg">
+                    <h3 className="font-semibold text-blue-900 mb-2">Available {serviceType.charAt(0).toUpperCase() + serviceType.slice(1)} Services to Import:</h3>
+                    <div className="text-sm text-blue-800">
+                      {getServicesByType(serviceType).map((service, index) => (
+                        <div key={index} className="flex justify-between py-1">
+                          <span>{service.name}</span>
+                          <span>₹{service.price}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="mt-2 text-xs text-blue-600">
+                      Total: {getServicesByType(serviceType).length} services ready to import
+                    </div>
+                  </div>
+
                   {loadingServices ? (
                     <div>Loading services…</div>
                   ) : services.length === 0 ? (
-                    <div className="text-gray-600">No services found</div>
+                    <div className="text-gray-600">No services found. Use the "Import All" button above to add services.</div>
                   ) : (
                     <div className="space-y-3">
                       {services.map((s) => (
@@ -640,6 +1015,17 @@ export default function AdminDashboard() {
                         onChange={(e) => setNewService({ ...newService, map_link: e.target.value })}
                         className="w-full border rounded-md px-3 py-2 text-sm"
                       />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-900 mb-2">Pricing Details (JSON)</label>
+                      <textarea
+                        placeholder='[{"item": "Daily Plan", "price": 150}, {"item": "Weekly Plan", "price": 1000}]'
+                        value={newService.pricing_details}
+                        onChange={(e) => setNewService({ ...newService, pricing_details: e.target.value })}
+                        className="w-full border rounded-md px-3 py-2 text-sm font-mono"
+                        rows={3}
+                      />
+                      <p className="text-xs text-gray-600 mt-1">Optional: JSON array for {serviceType} plans/pricing</p>
                     </div>
                     <label className="inline-flex items-center gap-2 text-sm">
                       <input
@@ -1061,6 +1447,276 @@ export default function AdminDashboard() {
                       className="w-full bg-primary-600 text-white py-2 rounded-md font-semibold text-sm hover:bg-primary-700"
                     >
                       Add Roommate
+                    </button>
+                  </form>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'laundry' && (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2 bg-white shadow rounded-lg overflow-hidden">
+                <div className="px-6 py-4 border-b border-gray-200">
+                  <h2 className="text-lg font-medium text-gray-900">Manage Laundry Shops</h2>
+                </div>
+                <div className="p-6">
+                  {loadingLaundry ? (
+                    <div>Loading laundry shops…</div>
+                  ) : laundryShops.length === 0 ? (
+                    <div className="text-gray-600">No laundry shops found</div>
+                  ) : (
+                    <div className="space-y-3">
+                      {laundryShops.map((shop: any) => (
+                        <div key={shop.id} className="flex items-center justify-between rounded-lg border p-3">
+                          <div className="flex-1">
+                            <div className="font-semibold">{shop.name}</div>
+                            <div className="text-sm text-gray-600">₹{shop.price} · {shop.description}</div>
+                            {shop.image_url && <div className="text-xs text-blue-600">📷 Image: Yes</div>}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => deleteLaundryShop(shop.id)}
+                              className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-red-100 text-red-700"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="bg-white shadow rounded-lg overflow-hidden">
+                <div className="px-6 py-4 border-b border-gray-200">
+                  <h2 className="text-lg font-medium text-gray-900">Add Laundry Shop</h2>
+                </div>
+                <div className="p-6 max-h-[600px] overflow-y-auto">
+                  {message && (
+                    <div className={`mb-4 p-3 rounded-md text-sm ${message.includes('added') || message.includes('successfully') ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'}`}>
+                      {message}
+                    </div>
+                  )}
+                  <form onSubmit={addLaundryShop} className="space-y-3">
+                    <input
+                      type="text"
+                      placeholder="Shop Name"
+                      value={newLaundry.name}
+                      onChange={(e) => setNewLaundry({ ...newLaundry, name: e.target.value })}
+                      className="w-full border rounded-md px-3 py-2 text-sm"
+                      required
+                    />
+                    <textarea
+                      placeholder="Description"
+                      value={newLaundry.description}
+                      onChange={(e) => setNewLaundry({ ...newLaundry, description: e.target.value })}
+                      className="w-full border rounded-md px-3 py-2 text-sm"
+                      rows={2}
+                    />
+                    <input
+                      type="number"
+                      placeholder="Base Price (₹)"
+                      value={newLaundry.price}
+                      onChange={(e) => setNewLaundry({ ...newLaundry, price: e.target.value })}
+                      className="w-full border rounded-md px-3 py-2 text-sm"
+                      required
+                      min="0"
+                    />
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => setNewLaundry({ ...newLaundry, imageFile: e.target.files?.[0] || null })}
+                      className="w-full border rounded-md px-3 py-2 text-sm"
+                    />
+                    <textarea
+                      placeholder='[{"item": "Per KG", "price": 50}, {"item": "Shirt", "price": 20}]'
+                      value={newLaundry.pricing_details}
+                      onChange={(e) => setNewLaundry({ ...newLaundry, pricing_details: e.target.value })}
+                      className="w-full border rounded-md px-3 py-2 text-sm font-mono"
+                      rows={3}
+                    />
+                    <button
+                      type="submit"
+                      className="w-full bg-primary-600 text-white py-2 rounded-md font-semibold text-sm hover:bg-primary-700"
+                    >
+                      Add Laundry Shop
+                    </button>
+                  </form>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'mess' && (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2 bg-white shadow rounded-lg overflow-hidden">
+                <div className="px-6 py-4 border-b border-gray-200">
+                  <h2 className="text-lg font-medium text-gray-900">Manage Mess Services</h2>
+                </div>
+                <div className="p-6">
+                  {loadingMess ? (
+                    <div>Loading mess services…</div>
+                  ) : messServices.length === 0 ? (
+                    <div className="text-gray-600">No mess services found</div>
+                  ) : (
+                    <div className="space-y-3">
+                      {messServices.map((service: any) => (
+                        <div key={service.id} className="flex items-center justify-between rounded-lg border p-3">
+                          <div className="flex-1">
+                            <div className="font-semibold">{service.name}</div>
+                            <div className="text-sm text-gray-600">₹{service.price} · {service.description}</div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => deleteMessService(service.id)}
+                              className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-red-100 text-red-700"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="bg-white shadow rounded-lg overflow-hidden">
+                <div className="px-6 py-4 border-b border-gray-200">
+                  <h2 className="text-lg font-medium text-gray-900">Add Mess Service</h2>
+                </div>
+                <div className="p-6">
+                  <form onSubmit={addMessService} className="space-y-3">
+                    <input
+                      type="text"
+                      placeholder="Service Name"
+                      value={newMess.name}
+                      onChange={(e) => setNewMess({ ...newMess, name: e.target.value })}
+                      className="w-full border rounded-md px-3 py-2 text-sm"
+                      required
+                    />
+                    <textarea
+                      placeholder="Description"
+                      value={newMess.description}
+                      onChange={(e) => setNewMess({ ...newMess, description: e.target.value })}
+                      className="w-full border rounded-md px-3 py-2 text-sm"
+                      rows={2}
+                    />
+                    <input
+                      type="number"
+                      placeholder="Base Price (₹)"
+                      value={newMess.price}
+                      onChange={(e) => setNewMess({ ...newMess, price: e.target.value })}
+                      className="w-full border rounded-md px-3 py-2 text-sm"
+                      required
+                      min="0"
+                    />
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => setNewMess({ ...newMess, imageFile: e.target.files?.[0] || null })}
+                      className="w-full border rounded-md px-3 py-2 text-sm"
+                    />
+                    <textarea
+                      placeholder='[{"item": "Daily Plan", "price": 150}, {"item": "Monthly Plan", "price": 3500}]'
+                      value={newMess.pricing_details}
+                      onChange={(e) => setNewMess({ ...newMess, pricing_details: e.target.value })}
+                      className="w-full border rounded-md px-3 py-2 text-sm font-mono"
+                      rows={3}
+                    />
+                    <button
+                      type="submit"
+                      className="w-full bg-primary-600 text-white py-2 rounded-md font-semibold text-sm hover:bg-primary-700"
+                    >
+                      Add Mess Service
+                    </button>
+                  </form>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'printing' && (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2 bg-white shadow rounded-lg overflow-hidden">
+                <div className="px-6 py-4 border-b border-gray-200">
+                  <h2 className="text-lg font-medium text-gray-900">Manage Printing Services</h2>
+                </div>
+                <div className="p-6">
+                  {loadingPrinting ? (
+                    <div>Loading printing services…</div>
+                  ) : printingServices.length === 0 ? (
+                    <div className="text-gray-600">No printing services found</div>
+                  ) : (
+                    <div className="space-y-3">
+                      {printingServices.map((service: any) => (
+                        <div key={service.id} className="flex items-center justify-between rounded-lg border p-3">
+                          <div className="flex-1">
+                            <div className="font-semibold">{service.name}</div>
+                            <div className="text-sm text-gray-600">₹{service.price} · {service.description}</div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => deletePrintingService(service.id)}
+                              className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-red-100 text-red-700"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="bg-white shadow rounded-lg overflow-hidden">
+                <div className="px-6 py-4 border-b border-gray-200">
+                  <h2 className="text-lg font-medium text-gray-900">Add Printing Service</h2>
+                </div>
+                <div className="p-6">
+                  <form onSubmit={addPrintingService} className="space-y-3">
+                    <input
+                      type="text"
+                      placeholder="Service Name"
+                      value={newPrinting.name}
+                      onChange={(e) => setNewPrinting({ ...newPrinting, name: e.target.value })}
+                      className="w-full border rounded-md px-3 py-2 text-sm"
+                      required
+                    />
+                    <textarea
+                      placeholder="Description"
+                      value={newPrinting.description}
+                      onChange={(e) => setNewPrinting({ ...newPrinting, description: e.target.value })}
+                      className="w-full border rounded-md px-3 py-2 text-sm"
+                      rows={2}
+                    />
+                    <input
+                      type="number"
+                      placeholder="Base Price (₹)"
+                      value={newPrinting.price}
+                      onChange={(e) => setNewPrinting({ ...newPrinting, price: e.target.value })}
+                      className="w-full border rounded-md px-3 py-2 text-sm"
+                      required
+                      min="0"
+                    />
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => setNewPrinting({ ...newPrinting, imageFile: e.target.files?.[0] || null })}
+                      className="w-full border rounded-md px-3 py-2 text-sm"
+                    />
+                    <textarea
+                      placeholder='[{"item": "Black & White", "price": 2}, {"item": "Color Print", "price": 10}]'
+                      value={newPrinting.pricing_details}
+                      onChange={(e) => setNewPrinting({ ...newPrinting, pricing_details: e.target.value })}
+                      className="w-full border rounded-md px-3 py-2 text-sm font-mono"
+                      rows={3}
+                    />
+                    <button
+                      type="submit"
+                      className="w-full bg-primary-600 text-white py-2 rounded-md font-semibold text-sm hover:bg-primary-700"
+                    >
+                      Add Printing Service
                     </button>
                   </form>
                 </div>

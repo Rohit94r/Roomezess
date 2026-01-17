@@ -38,6 +38,7 @@ export default function CommunityPage() {
     title: '',
     content: '',
     postType: 'discussion',
+    imageFile: null as File | null,
   });
   const [showCreatePost, setShowCreatePost] = useState(false);
   const [newComments, setNewComments] = useState<{ [key: string]: string }>({});
@@ -183,20 +184,33 @@ export default function CommunityPage() {
   const fetchPosts = async () => {
     try {
       const response = await communityAPI.getPosts();
-      const transformedPosts = response.data.data.map((post: any) => ({
-        _id: post.id,
-        title: post.content.substring(0, 30) + '...',
-        content: post.content,
-        postType: post.type,
-        author: {
-          name: post.profiles?.name || 'Unknown',
-          email: 'dummy@example.com',
-        },
-        likes: [],
-        comments: [],
-        college: 'Atharva College of Engineering',
-        createdAt: post.created_at,
-      }));
+      const transformedPosts = await Promise.all(
+        response.data.data.map(async (post: any) => {
+          // Fetch likes and comments for each post
+          const communityResponse = await fetch(`/api/community?postId=${post.id}`);
+          const communityData = communityResponse.ok ? await communityResponse.json() : { likes: 0, comments: [] };
+          
+          return {
+            _id: post.id,
+            title: post.content.substring(0, 30) + '...',
+            content: post.content,
+            postType: post.type,
+            image_url: post.image_url,
+            author: {
+              name: post.profiles?.name || 'Unknown',
+              email: 'dummy@example.com',
+            },
+            likes: Array(communityData.likes || 0).fill('user'),
+            comments: (communityData.comments || []).map((c: any) => ({
+              user: { name: c.user_name || 'Anonymous' },
+              text: c.comment,
+              createdAt: c.created_at,
+            })),
+            college: 'Atharva College of Engineering',
+            createdAt: post.created_at,
+          };
+        })
+      );
       setPosts(transformedPosts);
     } catch (error) {
       console.error('Error fetching posts:', error);
@@ -208,15 +222,38 @@ export default function CommunityPage() {
   const handleSubmitPost = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      let imageUrl = '';
+      
+      // Upload image if provided
+      if (newPost.imageFile) {
+        const formData = new FormData();
+        formData.append('file', newPost.imageFile);
+        formData.append('bucket', 'service-images');
+        
+        const uploadRes = await fetch('/api/admin/upload-image', {
+          method: 'POST',
+          body: formData,
+        });
+        
+        if (uploadRes.ok) {
+          const uploadData = await uploadRes.json();
+          imageUrl = uploadData.url;
+        } else {
+          console.error('Image upload failed:', await uploadRes.text());
+        }
+      }
+
       await communityAPI.createPost({
         type: newPost.postType,
-        content: newPost.content
+        content: newPost.content,
+        image_url: imageUrl
       });
 
       setNewPost({
         title: '',
         content: '',
         postType: 'discussion',
+        imageFile: null,
       });
       setShowCreatePost(false);
       fetchPosts();
@@ -226,30 +263,64 @@ export default function CommunityPage() {
   };
 
   const handleLike = async (postId: string) => {
-    setPosts(posts.map(post =>
-      post._id === postId
-        ? { ...post, likes: [...post.likes, 'current_user'] }
-        : post
-    ));
+    try {
+      const response = await fetch('/api/community', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'like', postId })
+      });
+      
+      if (response.ok) {
+        // Fetch updated data for this post
+        const communityResponse = await fetch(`/api/community?postId=${postId}`);
+        if (communityResponse.ok) {
+          const communityData = await communityResponse.json();
+          setPosts(posts.map(post =>
+            post._id === postId
+              ? { ...post, likes: Array(communityData.likes || 0).fill('user') }
+              : post
+          ));
+        }
+      }
+    } catch (error) {
+      console.error('Error liking post:', error);
+    }
   };
 
   const handleAddComment = async (postId: string) => {
     const commentText = newComments[postId]?.trim();
     if (!commentText) return;
 
-    const newComment = {
-      user: { name: 'Current User' },
-      text: commentText,
-      createdAt: new Date().toISOString(),
-    };
-
-    setPosts(posts.map(post =>
-      post._id === postId
-        ? { ...post, comments: [...post.comments, newComment] }
-        : post
-    ));
-
-    setNewComments({ ...newComments, [postId]: '' });
+    try {
+      const response = await fetch('/api/community', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'comment', postId, comment: commentText })
+      });
+      
+      if (response.ok) {
+        // Fetch updated comments for this post
+        const communityResponse = await fetch(`/api/community?postId=${postId}`);
+        if (communityResponse.ok) {
+          const communityData = await communityResponse.json();
+          setPosts(posts.map(post =>
+            post._id === postId
+              ? { 
+                  ...post, 
+                  comments: (communityData.comments || []).map((c: any) => ({
+                    user: { name: c.user_name || 'Anonymous' },
+                    text: c.comment,
+                    createdAt: c.created_at,
+                  }))
+                }
+              : post
+          ));
+        }
+        setNewComments({ ...newComments, [postId]: '' });
+      }
+    } catch (error) {
+      console.error('Error adding comment:', error);
+    }
   };
 
   const filteredPosts = posts.filter((p: any) => {
@@ -407,6 +478,18 @@ export default function CommunityPage() {
                       value={newPost.content}
                       onChange={(e) => setNewPost({ ...newPost, content: e.target.value })}
                     />
+                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-4">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => setNewPost({ ...newPost, imageFile: e.target.files?.[0] || null })}
+                        className="w-full text-sm text-gray-600"
+                      />
+                      {newPost.imageFile && (
+                        <p className="text-xs text-green-600 mt-2">✓ {newPost.imageFile.name}</p>
+                      )}
+                      <p className="text-xs text-gray-500 mt-1">Optional: Add an image to your post</p>
+                    </div>
                     <div className="flex justify-end gap-3">
                       <button
                         type="button"
@@ -449,6 +532,15 @@ export default function CommunityPage() {
                           </span>
                           <h3 className="mt-2 text-lg font-semibold text-gray-900">{post.title}</h3>
                           <p className="mt-1 text-gray-700">{post.content}</p>
+                          {post.image_url && (
+                            <div className="mt-3">
+                              <img 
+                                src={post.image_url} 
+                                alt="Post image" 
+                                className="rounded-lg max-w-full h-auto max-h-64 object-cover"
+                              />
+                            </div>
+                          )}
                           <div className="mt-3 text-sm text-gray-500">
                             <span>{post.author?.name || 'Unknown'}</span> · <span>{new Date(post.createdAt).toLocaleString()}</span>
                           </div>

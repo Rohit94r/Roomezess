@@ -1,37 +1,41 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { servicesAPI } from '@/lib/api';
+import { laundryAPI } from '@/lib/supabaseAPI'; // Using new API directly
 
-interface ServiceItem {
+interface PricingItem {
+    item: string;
+    price: number;
+}
+
+interface LaundryShop {
     id: string;
     name: string;
     description: string;
-    price: number;
-    service_type: string;
-    available: boolean;
+    price: number; // Base price or min price
     image_url?: string;
-    image?: string;
-    owner_id: string;
-    created_at: string;
+    image?: string; // Legacy
+    available: boolean;
+    pricing_details?: Array<{item: string; price: number}>; // JSONB
+    phone?: string;
+    address?: string;
 }
 
 export default function LaundryPage() {
-    const [items, setItems] = useState<ServiceItem[]>([]);
+    const [shops, setShops] = useState<LaundryShop[]>([]);
     const [loading, setLoading] = useState(true);
+    const [selectedShop, setSelectedShop] = useState<LaundryShop | null>(null);
 
     useEffect(() => {
-        fetchServices();
+        fetchShops();
     }, []);
 
-    const fetchServices = async () => {
+    const fetchShops = async () => {
         try {
-            const response = await servicesAPI.getServicesByType('laundry');
-            const serviceData = response.data.data || response.data || [];
-            setItems(serviceData);
+            const response = await laundryAPI.getAllShops();
+            setShops(response.data.data);
         } catch (error) {
-            console.error('Error fetching laundry services:', error);
-            setItems([]);
+            console.error('Error fetching laundry shops:', error);
         } finally {
             setLoading(false);
         }
@@ -40,57 +44,122 @@ export default function LaundryPage() {
     if (loading) {
         return (
             <div className="min-h-screen flex items-center justify-center">
-                <div className="text-2xl font-semibold text-gray-700">Loading laundry services...</div>
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-600"></div>
             </div>
         );
     }
 
     return (
-        <div className="pb-20 lg:pb-0">
-            <main className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6 md:py-8">
-                <div className="mb-8">
-                    <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900">
+        <div className="bg-gray-50 min-h-screen pb-20 lg:pb-0">
+            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                <div className="mb-10 text-center">
+                    <h1 className="text-3xl sm:text-4xl font-extrabold text-gray-900 mb-4">
                         🧺 Laundry Services
                     </h1>
-                    <p className="text-gray-600 mt-2">Professional laundry pickup and delivery for students.</p>
+                    <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+                        Professional pickup & delivery. Schedule a wash in seconds.
+                    </p>
                 </div>
 
-                <div className="w-full">
-                    {items.length === 0 ? (
-                        <div className="bg-white rounded-2xl shadow-md p-8 sm:p-12 text-center border border-gray-100">
-                            <svg className="mx-auto h-12 w-12 sm:h-16 sm:w-16 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.874-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path>
-                            </svg>
-                            <h3 className="mt-4 text-base sm:text-lg font-semibold text-gray-900">No laundry services available</h3>
-                            <p className="mt-2 text-sm sm:text-base text-gray-500">Check back later for new laundry providers.</p>
-                        </div>
-                    ) : (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 md:gap-6">
-                            {items.map((item) => (
-                                <div key={item.id} className="bg-white rounded-2xl shadow-md overflow-hidden hover:shadow-xl transition-all duration-300 border border-gray-100 active:scale-[0.98]">
-                                    {item.image_url || item.image ? (
-                                        <img src={item.image_url || item.image} alt={item.name} className="w-full h-40 sm:h-48 object-cover" />
+                {shops.length === 0 ? (
+                    <div className="bg-white rounded-2xl shadow-sm p-12 text-center border border-dashed border-gray-300">
+                        <p className="text-gray-500 text-xl font-medium">No laundry shops available nearby.</p>
+                        <p className="text-gray-400 mt-2">Please check back later.</p>
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                        {shops.map((shop) => (
+                            <div key={shop.id} className="bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 group border border-gray-100">
+                                <div className="h-48 overflow-hidden relative bg-blue-50">
+                                    {(shop.image_url || shop.image) ? (
+                                        <img src={shop.image_url || shop.image} alt={shop.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
                                     ) : (
-                                        <div className="bg-gradient-to-br from-purple-50 to-purple-100 w-full h-40 sm:h-48 flex items-center justify-center">
-                                            <span className="text-purple-400 text-3xl">🧺</span>
-                                        </div>
+                                        <div className="w-full h-full flex items-center justify-center text-6xl">👕</div>
                                     )}
-                                    <div className="p-4 sm:p-5 md:p-6">
-                                        <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-2">{item.name}</h3>
-                                        <p className="text-sm sm:text-base text-gray-600 mb-4 line-clamp-2">{item.description}</p>
-                                        <div className="flex justify-between items-center">
-                                            <span className="text-lg sm:text-xl font-bold text-primary-600">₹{item.price}</span>
-                                            <button className="bg-primary-600 hover:bg-primary-700 active:bg-primary-800 text-white py-2 px-4 rounded-xl font-semibold shadow-md transition-all active:scale-95">
-                                                Book Now
-                                            </button>
-                                        </div>
+                                </div>
+
+                                <div className="p-6">
+                                    <h3 className="text-xl font-bold text-gray-900 mb-2">{shop.name}</h3>
+                                    <p className="text-gray-600 mb-4 text-sm line-clamp-2">{shop.description}</p>
+
+                                    <div className="flex flex-col space-y-3">
+                                        <button
+                                            onClick={() => setSelectedShop(shop)}
+                                            className="w-full py-2.5 px-4 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-xl font-semibold text-sm transition-colors flex items-center justify-center"
+                                        >
+                                            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                            View Price List
+                                        </button>
+
+                                        <button className="w-full py-2.5 px-4 bg-primary-600 hover:bg-primary-700 text-white rounded-xl font-bold text-sm shadow-md transition-colors active:scale-95">
+                                            Book Pickup
+                                        </button>
                                     </div>
                                 </div>
-                            ))}
-                        </div>
-                    )}
-                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
             </main>
+
+            {/* Pricing Modal */}
+            {selectedShop && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fadeIn">
+                    <div className="bg-white rounded-3xl max-w-md w-full max-h-[90vh] overflow-hidden shadow-2xl flex flex-col animate-slideUp">
+                        <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                            <h3 className="text-xl font-bold text-gray-900">{selectedShop.name} Pricing</h3>
+                            <button
+                                onClick={() => setSelectedShop(null)}
+                                className="p-2 bg-white rounded-full hover:bg-gray-200 shadow-sm transition-colors"
+                            >
+                                <svg className="w-6 h-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        </div>
+
+                        <div className="p-6 overflow-y-auto">
+                            {selectedShop.pricing_details && selectedShop.pricing_details.length > 0 ? (
+                                <table className="w-full">
+                                    <thead className="bg-gray-50 text-gray-500 text-xs uppercase font-bold tracking-wider">
+                                        <tr>
+                                            <th className="px-4 py-2 text-left rounded-l-lg">Service / Item</th>
+                                            <th className="px-4 py-2 text-right rounded-r-lg">Price</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-100">
+                                        {selectedShop.pricing_details.map((item, idx) => (
+                                            <tr key={idx} className="hover:bg-gray-50/50 transition-colors">
+                                                <td className="px-4 py-3 text-gray-800 font-medium">{item.item}</td>
+                                                <td className="px-4 py-3 text-right text-primary-600 font-bold">₹{item.price}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            ) : (
+                                <div className="text-center py-8 text-gray-500">
+                                    <p>Pricing details not available online.</p>
+                                    <p className="text-sm mt-2">Please call {selectedShop.phone || 'us'} for rates.</p>
+                                </div>
+                            )}
+
+                            {selectedShop.address && (
+                                <div className="mt-6 pt-4 border-t border-gray-100 text-sm text-gray-500">
+                                    <span className="font-semibold block mb-1 text-gray-700">Address:</span>
+                                    {selectedShop.address}
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="p-4 border-t border-gray-100 bg-gray-50">
+                            <button
+                                onClick={() => setSelectedShop(null)}
+                                className="w-full bg-gray-900 text-white py-3 rounded-xl font-bold shadow hover:bg-gray-800 transition-colors"
+                            >
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

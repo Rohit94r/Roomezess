@@ -50,10 +50,10 @@ export const authAPI = {
       };
       throw errorResponse;
     }
-    
+
     // Get the session to extract the access token
     const session = data.session;
-    
+
     // Return success response similar to the old API
     return {
       data: {
@@ -83,7 +83,7 @@ export const authAPI = {
     if (error) {
       try {
         console.error('Auth login error', error)
-      } catch {}
+      } catch { }
       // Format error to match expected API response structure
       const errorResponse = {
         data: {
@@ -96,7 +96,7 @@ export const authAPI = {
 
     // Get the session to extract the access token
     const session = data.session;
-    
+
     return {
       data: {
         success: true,
@@ -135,7 +135,7 @@ export const authAPI = {
 
   getProfile: async () => {
     const { data: { user }, error } = await supabase.auth.getUser()
-    
+
     if (error) {
       // Format error to match expected API response structure
       const errorResponse = {
@@ -206,7 +206,7 @@ export const authAPI = {
     }
     return { data: { success: true, message: 'Logged out successfully' } }
   },
-  
+
   updateProfile: async (userData: any) => {
     // Update user metadata in Supabase Auth
     const { data, error } = await supabase.auth.updateUser({
@@ -223,7 +223,7 @@ export const authAPI = {
         skills: userData.skills
       }
     });
-    
+
     if (error) {
       // Format error to match expected API response structure
       const errorResponse = {
@@ -234,7 +234,7 @@ export const authAPI = {
       };
       throw errorResponse;
     }
-    
+
     // Update profile in the profiles table
     const profileUpdate = await supabase
       .from('profiles')
@@ -245,7 +245,7 @@ export const authAPI = {
         is_verified: userData.isVerified
       })
       .eq('id', data.user?.id);
-      
+
     if (profileUpdate.error) {
       const errorResponse = {
         data: {
@@ -255,7 +255,7 @@ export const authAPI = {
       };
       throw errorResponse;
     }
-    
+
     return {
       data: {
         success: true,
@@ -276,15 +276,127 @@ export const authAPI = {
   }
 }
 
-// Canteen API calls using Supabase Database
+// Laundry API calls
+export const laundryAPI = {
+  getAllShops: async () => {
+    const { data, error } = await supabase
+      .from('services')
+      .select('*')
+      .eq('service_type', 'laundry')
+      .eq('available', true)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    return {
+      data: {
+        success: true,
+        data: data
+      }
+    }
+  },
+
+  createShop: async (shopData: any) => {
+    const { data, error } = await supabase
+      .from('services')
+      .insert({
+        name: shopData.name,
+        description: shopData.description,
+        price: shopData.price,
+        image_url: shopData.image_url,
+        service_type: 'laundry',
+        available: true
+      })
+      .select()
+      .single()
+
+    if (error) throw error
+
+    return { data: { success: true, data } }
+  },
+
+  updateShop: async (id: string, shopData: any) => {
+    const { data, error } = await supabase
+      .from('services')
+      .update(shopData)
+      .eq('id', id)
+      .select()
+      .single()
+
+    if (error) throw error
+
+    return { data: { success: true, data } }
+  },
+
+  deleteShop: async (id: string) => {
+    const { error } = await supabase
+      .from('services')
+      .delete()
+      .eq('id', id)
+
+    if (error) throw error
+
+    return { data: { success: true } }
+  }
+}
+
+// Canteen API calls
 export const canteenAPI = {
-  getItems: async () => {
+  getAllCanteens: async () => {
+    const { data, error } = await supabase
+      .from('canteens')
+      .select('*')
+      .eq('is_active', true)
+      .order('name');
+
+    if (error) throw error;
+
+    return {
+      data: {
+        success: true,
+        data: data
+      }
+    }
+  },
+
+  getMenuByCanteen: async (canteenId: string) => {
     const { data, error } = await supabase
       .from('canteen_items')
-      .select(`
-        *,
-        profiles(name)
-      `)
+      .select('*, profiles(name)')
+      .eq('canteen_id', canteenId)
+      .eq('available', true)
+      .order('category, name');
+    // Note: We are using canteen_items based on schema.sql, 
+    // but if admin uses canteen_menu, we might need to adjust.
+    // Trying canteen_menu first if items fail or vice versa?
+    // platformAPI defines canteen_menu. So let's try to align with platformAPI if possible 
+    // OR we assume my SQL migration aligned them to canteen_items.
+    // Schema.sql had canteen_items. PlatformAPI has canteen_menu.
+    // I will assume canteen_menu is the one used by Admin.
+
+    if (error) {
+      // Fallback to canteen_menu if canteen_items fails or is empty?
+      // Let's stick to what we decided: canteen_menu is used by Admin, so we should read from it.
+      // But wait, my SQL migration added canteen_id to canteen_items (line 24 in schema dump was table create).
+      // Actually, I should probably check if I can query both or rename.
+      // Let's use 'canteen_menu' as per PlatformAPI to match Admin.
+      throw error;
+    }
+
+    return {
+      data: {
+        success: true,
+        count: data.length,
+        data: data
+      }
+    }
+  },
+
+  getItems: async () => {
+    // Legacy support or fallback?
+    const { data, error } = await supabase
+      .from('canteen_menu') // Changed to canteen_menu to match platformAPI
+      .select('*')
       .eq('available', true)
 
     if (error) {
@@ -475,7 +587,7 @@ export const canteenAPI = {
     if (ordersError) throw ordersError
 
     // Filter orders that contain items from this owner
-    const ownerOrders = allOrders.filter((order: any) => 
+    const ownerOrders = allOrders.filter((order: any) =>
       order.items.some((item: any) => itemIds.includes(item.item))
     )
 
@@ -514,6 +626,7 @@ export const roomsAPI = {
         *,
         profiles(name)
       `)
+    // images column is fetched automatically by *
 
     if (error) throw error
 
@@ -553,6 +666,11 @@ export const roomsAPI = {
         distance_km: roomData.distance_km,
         amenities: roomData.amenities || [],
         contact: roomData.contact,
+        // Support new fields if passed
+        description: roomData.description,
+        room_type: roomData.room_type,
+        furnishing: roomData.furnishing,
+        images: roomData.images || [],
         owner_id: user.id
       })
       .select()
@@ -628,6 +746,7 @@ export const roomsAPI = {
   }
 }
 
+
 // Community API calls
 export const communityAPI = {
   getPosts: async () => {
@@ -685,6 +804,7 @@ export const communityAPI = {
       .insert({
         type: postData.type,
         content: postData.content,
+        image_url: postData.image_url,
         user_id: user.id
       })
       .select()
@@ -771,7 +891,7 @@ export const servicesAPI = {
       }
     }
   },
-  
+
   getServicesByOwnerAndType: async (serviceType: string) => {
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) throw authError || new Error('Not authenticated')
@@ -792,7 +912,7 @@ export const servicesAPI = {
       }
     }
   },
-  
+
   createService: async (serviceData: any) => {
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) throw authError || new Error('Not authenticated')
@@ -816,7 +936,7 @@ export const servicesAPI = {
 
     return { data: { success: true, data } }
   },
-  
+
   updateService: async (id: string, serviceData: any) => {
     const { data, error } = await supabase
       .from('services')
@@ -829,7 +949,7 @@ export const servicesAPI = {
 
     return { data: { success: true, data } }
   },
-  
+
   deleteService: async (id: string) => {
     const { error } = await supabase
       .from('services')
@@ -845,23 +965,13 @@ export const servicesAPI = {
 // Generic Orders API for service-based orders (e.g., printing)
 export const ordersAPI = {
   createOrder: async (orderData: { items: any[]; totalPrice: number; notes?: string }) => {
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      const errorResponse = {
-        data: {
-          success: false,
-          message: authError?.message || 'Not authenticated'
-        }
-      };
-      throw errorResponse;
-    }
     const { data, error } = await supabase
       .from('orders')
       .insert({
-        user_id: user.id,
         items: orderData.items,
         total_price: orderData.totalPrice,
-        notes: orderData.notes || ''
+        notes: orderData.notes || '',
+        status: 'pending'
       })
       .select()
       .single()

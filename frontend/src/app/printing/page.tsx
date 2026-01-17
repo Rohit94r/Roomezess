@@ -116,30 +116,40 @@ export default function PrintingPage() {
     setMessage('');
     try {
       const price = totalPrice();
-      const orderItem = {
-        item: 'printing',
-        name: `Printing ${pageSize} ${colorMode} ${sides}`,
-        quantity: copies,
-        price: price,
-        fileUrl: publicUrl,
-        pages
-      };
-      await ordersAPI.createOrder({
-        items: [orderItem],
-        totalPrice: price,
-        notes: `Printing job: ${pageSize}, ${colorMode}, ${sides}, ${pages} pages, ${copies} copies`
+      
+      const response = await fetch('/api/printing', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          items: [{
+            item: 'printing',
+            name: `Printing ${pageSize} ${colorMode} ${sides}`,
+            quantity: copies,
+            price: price,
+            fileUrl: publicUrl,
+            pages
+          }],
+          totalPrice: price,
+          notes: `Printing job: ${pageSize}, ${colorMode}, ${sides}, ${pages} pages, ${copies} copies`,
+          fileUrl: publicUrl,
+          pageSize,
+          colorMode,
+          sides,
+          pages,
+          copies
+        })
       });
-      setMessage('Order placed successfully. Emailing service provider…');
-      if (publicUrl) {
-        const subject = encodeURIComponent('New Print Job Request');
-        const body = encodeURIComponent(
-          `Hello,\n\nA new print job has been placed.\n\nDetails:\n- Page Size: ${pageSize}\n- Color: ${colorMode}\n- Sides: ${sides}\n- Pages: ${pages}\n- Copies: ${copies}\n- Estimated Total: ₹${totalPrice()}\n\nDocument URL:\n${publicUrl}\n\nPlease process this order.\n\nRoomezes`
-        );
-        const mailto = `mailto:rjdhav67@gmail.com?subject=${subject}&body=${body}`;
-        window.open(mailto, '_blank');
+
+      const result = await response.json();
+      
+      if (result.success) {
+        setMessage(result.message || 'Order placed successfully!');
+        // No need to open mailto - email is sent from backend
+      } else {
+        setMessage(result.error || 'Failed to place order');
       }
     } catch (e: any) {
-      setMessage(e.data?.message || e.message || 'Failed to place order');
+      setMessage(e.message || 'Failed to place order');
     } finally {
       setPlacingOrder(false);
     }

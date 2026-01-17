@@ -61,6 +61,7 @@ export default function NavHeader({ currentPage: propCurrentPage }: NavHeaderPro
   const navItems = [
     { name: 'Home', href: '/' },
     { name: 'Rooms', href: '/rooms' },
+    { name: 'Canteen', href: '/canteen' },
     { name: 'Laundry', href: '/laundry' },
     { name: 'Printing', href: '/printing' },
     { name: 'Mess', href: '/mess' },

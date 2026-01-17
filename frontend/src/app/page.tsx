@@ -31,7 +31,7 @@ export default function Home() {
                     Get Started
                   </Link>
                   <Link
-                    href="/services"
+                    href="/rooms"
                     className="border-2 border-primary-600 text-primary-600 hover:bg-primary-50 active:bg-primary-100 font-semibold py-3.5 px-6 sm:px-8 rounded-xl text-center transition-all duration-200"
                   >
                     Explore Services

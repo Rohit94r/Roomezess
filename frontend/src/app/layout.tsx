@@ -19,10 +19,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={inter.className}>
+      <body className={`${inter.className} bg-white`}>
         <SupabaseAuthListener />
         <NavHeader />
-        <div className="min-h-screen pt-16">
+        <div className="min-h-screen pt-16 bg-white">
           {children}
         </div>
       </body>
