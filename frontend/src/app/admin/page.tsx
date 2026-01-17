@@ -1019,7 +1019,7 @@ export default function AdminDashboard() {
                     <div>
                       <label className="block text-sm font-semibold text-gray-900 mb-2">Pricing Details (JSON)</label>
                       <textarea
-                        placeholder='[{"item": "Daily Plan", "price": 150}, {"item": "Weekly Plan", "price": 1000}]'
+                        placeholder='[{&quot;item&quot;: &quot;Daily Plan&quot;, &quot;price&quot;: 150}, {&quot;item&quot;: &quot;Weekly Plan&quot;, &quot;price&quot;: 1000}]'
                         value={newService.pricing_details}
                         onChange={(e) => setNewService({ ...newService, pricing_details: e.target.value })}
                         className="w-full border rounded-md px-3 py-2 text-sm font-mono"
@@ -1618,7 +1618,7 @@ export default function AdminDashboard() {
                       className="w-full border rounded-md px-3 py-2 text-sm"
                     />
                     <textarea
-                      placeholder='[{"item": "Daily Plan", "price": 150}, {"item": "Monthly Plan", "price": 3500}]'
+                      placeholder='[{&quot;item&quot;: &quot;Daily Plan&quot;, &quot;price&quot;: 150}, {&quot;item&quot;: &quot;Monthly Plan&quot;, &quot;price&quot;: 3500}]'
                       value={newMess.pricing_details}
                       onChange={(e) => setNewMess({ ...newMess, pricing_details: e.target.value })}
                       className="w-full border rounded-md px-3 py-2 text-sm font-mono"

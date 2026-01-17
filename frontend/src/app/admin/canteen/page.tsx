@@ -653,7 +653,7 @@ export default function AdminCanteenPage() {
                           {order.customer_notes && (
                             <div className="bg-blue-50 p-3 rounded-lg mb-3">
                               <p className="text-sm text-blue-800">
-                                <strong>💬 Customer Notes:</strong> {order.customer_notes}
+                              <span className="font-semibold">💬 Customer Notes:</span> {order.customer_notes}
                               </p>
                             </div>
                           )}

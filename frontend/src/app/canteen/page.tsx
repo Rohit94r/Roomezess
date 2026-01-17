@@ -211,10 +211,6 @@ export default function CanteenPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Razorpay Script */}
-      <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
-
-      {/* Header */}
       <div className="bg-red-600 text-white p-6">
         <h1 className="text-2xl font-bold">Atharva Campus Canteens</h1>
         <p className="text-red-100">Order food before break, skip the queue</p>
@@ -344,7 +340,7 @@ export default function CanteenPage() {
                   {selectedMeal === 'all' ? 'No items available' : `No items available for ${selectedMeal}`}
                 </p>
                 <p className="text-gray-500 text-sm">
-                  {selectedMeal === 'all' ? 'Check back later for menu updates' : 'Try switching to a different meal time'}
+                  {selectedMeal === &apos;all&apos; ? &apos;Check back later for menu updates&apos; : &apos;Try switching to a different meal time&apos;}
                 </p>
               </div>
             )}
